@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+  <meta name="theme-color" content="#07090f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>StreetMaps</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800;900&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="map" aria-label="Mapa"></div>
+
+  <div class="top">
+    <div class="brand">Street<b>Maps</b><small id="modeTag"></small></div>
+    <div class="topbtns">
+      <button class="btn" id="openEvents">Eventos</button>
+      <button class="btn" id="openProfile">Perfil</button>
+    </div>
+  </div>
+
+  <div class="ghostbadge" id="ghostBadge" hidden>Não estás a partilhar a tua posição</div>
+  <div class="gpsbadge" id="gpsBadge" hidden></div>
+
+  <aside class="panel collapsed" id="panel">
+    <header>
+      <button class="sheet-handle" id="sheetHandle" aria-label="Expandir lista"></button>
+      <div class="ph"><h2>Na estrada</h2><span class="live"><i></i><span id="onlineCount">0</span> perto</span></div>
+      <div class="chips" role="group" aria-label="Quem mostrar">
+        <button class="chip" data-filter="all" aria-pressed="true">Todos</button>
+        <button class="chip" data-filter="crew" aria-pressed="false">A minha crew</button>
+      </div>
+    </header>
+    <div class="list" id="list"></div>
+    <footer>
+      <div class="toggle">
+        <div>Modo fantasma<small>Vês os outros, ninguém te vê</small></div>
+        <button class="switch" id="ghost" role="switch" aria-checked="false" aria-label="Modo fantasma"></button>
+      </div>
+      <div class="toggle">
+        <div>Zona privada<small id="homeHint">Esconde-te perto de casa (500 m)</small></div>
+        <button class="btn small" id="homeBtn">Definir aqui</button>
+      </div>
+    </footer>
+  </aside>
+
+  <section class="card" id="card" hidden></section>
+
+  <div class="speedo" aria-hidden="true">
+    <canvas id="speedo" width="340" height="340"></canvas>
+    <div class="val"><b id="spd">0</b><span>KM/H</span></div>
+  </div>
+
+  <div class="tools">
+    <button class="btn hot" id="reportBtn">+ Reportar</button>
+    <button class="btn" id="recenter">Centrar</button>
+  </div>
+  <div class="menu" id="menu" hidden>
+    <button data-r="police"><i class="r-police">P</i>Polícia</button>
+    <button data-r="crash"><i class="r-crash">!</i>Acidente</button>
+    <button data-r="works"><i class="r-works">W</i>Obras</button>
+    <button data-r="road"><i class="r-road">~</i>Piso mau</button>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+  <!-- welcome -->
+  <div class="drawer center" id="welcome">
+    <div class="sheet narrow">
+      <h2>Street<b>Maps</b></h2>
+      <p>O mapa da comunidade tuning. Para te mostrar no mapa, a aplicação precisa da tua localização.</p>
+      <ul>
+        <li>Só partilhas a posição enquanto a aplicação está aberta.</li>
+        <li>A tua velocidade nunca é mostrada aos outros.</li>
+        <li>Podes ligar o modo fantasma ou definir uma zona privada perto de casa.</li>
+      </ul>
+      <button class="btn hot big" id="start">Ativar localização</button>
+      <button class="link" id="startNoGps">Continuar sem localização</button>
+    </div>
+  </div>
+
+  <!-- events -->
+  <div class="drawer" id="events" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="eTitle">
+      <div class="sheethead"><h2 id="eTitle">Encontros e <b>eventos</b></h2><button class="btn" data-close="events">Fechar</button></div>
+      <div id="evList" class="stackcol"></div>
+      <form class="form" id="evForm" novalidate>
+        <h3>Criar evento</h3>
+        <div class="field"><label for="evName">Nome</label><input id="evName" maxlength="60" placeholder="Ex.: Cars &amp; Coffee de sábado"></div>
+        <div class="two">
+          <div class="field"><label for="evWhen">Data e hora</label><input id="evWhen" type="datetime-local"></div>
+          <div class="field"><label for="evPlace">Local</label><input id="evPlace" maxlength="80" placeholder="Ex.: Parque das Nações"></div>
+        </div>
+        <div class="field"><label for="evDesc">Descrição</label><textarea id="evDesc" maxlength="400" placeholder="O que vai acontecer, que carros são bem-vindos, regras do encontro"></textarea></div>
+        <div class="formrow"><button type="button" class="btn" id="evPick">Escolher no mapa</button><span class="hint" id="evPickHint">Sem local escolhido: usa o centro do mapa.</span></div>
+        <div class="formrow"><button type="submit" class="btn hot" id="evSubmit">Criar evento</button><span class="hint" id="evMsg"></span></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- profile -->
+  <div class="drawer" id="profile" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pTitle">
+      <div class="sheethead"><h2 id="pTitle">A tua <b>garagem</b></h2><button class="btn" data-close="profile">Fechar</button></div>
+      <form class="form" id="pForm" novalidate>
+        <div class="two">
+          <div class="field"><label for="pNick">Alcunha</label><input id="pNick" maxlength="24" placeholder="Ex.: Rui_EK9"></div>
+          <div class="field"><label for="pCrew">Crew</label><input id="pCrew" maxlength="40" placeholder="Ex.: Margem Sul Tuners"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label for="pCar">Carro</label><input id="pCar" maxlength="50" placeholder="Ex.: Honda Civic EK9"></div>
+          <div class="field"><label for="pHp">Potência (cv)</label><input id="pHp" type="number" min="0" max="2000" inputmode="numeric" placeholder="185"></div>
+        </div>
+        <div class="field"><label for="pMods">Modificações</label><input id="pMods" maxlength="200" placeholder="Separadas por vírgulas: coilovers, escape, jantes 17&quot;"></div>
+        <div class="formrow"><button type="submit" class="btn hot" id="pSave">Guardar perfil</button><span class="hint" id="pMsg"></span></div>
+      </form>
+      <section><h3>Comunidade</h3><div class="people" id="people"></div></section>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.58.0/dist/umd/supabase.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

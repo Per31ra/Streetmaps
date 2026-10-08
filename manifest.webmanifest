@@ -1,0 +1,13 @@
+{
+  "name": "StreetMaps",
+  "short_name": "StreetMaps",
+  "description": "O mapa ao vivo da comunidade tuning.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07090f",
+  "theme_color": "#07090f",
+  "lang": "pt-PT",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
