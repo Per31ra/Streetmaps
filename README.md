@@ -12,6 +12,8 @@ O mapa ao vivo da comunidade tuning: mapa real do mundo inteiro com visual néon
 - Alertas da comunidade (polícia, acidente, obras, piso mau): aparecem no mapa em tempo real e a rota mostra quantos há pelo caminho.
 - Perfil com garagem e badges (AMG, M, RS, GTI, Type R, STI e outros). As badges são emblemas de texto próprios da StreetMaps, não os logótipos oficiais das marcas.
 - Eventos e encontros no mapa, com confirmação de presença.
+- Painel da comunidade (no telemóvel, desliza para cima): meets em alta, pistas em destaque, condutores perto, tema e privacidade.
+- No mapa: pistas de corrida (riscadas a vermelho e branco) e bombas de gasolina ao aproximar.
 - Câmara em 3.ª pessoa durante a rota, com prédios em 3D.
 - Dois temas, escolhidos no Perfil: **Street** (néon azul-noite) e **Vice** (pôr do sol, rosa e turquesa, inspirado em Miami; sem logótipos nem fontes de jogos).
 

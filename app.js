@@ -205,7 +205,22 @@ function demoBackend() {
     async init() { let id = store.get("demo:uid"); if (!id) { id = "me-" + Math.random().toString(36).slice(2); store.set("demo:uid", id); } return id; },
     async getProfiles() { const mine = store.get(key("profile")); return [...BOTS.map((b, i) => ({ id: "demo-" + i, nick: b[0], car: b[1], crew: b[2], hp: b[3], mods: b[4], badges: b[5] || [] })), ...(mine ? [mine] : [])]; },
     async saveProfile(p) { store.set(key("profile"), { id: S.uid, ...p }); },
-    async getEvents() { return store.get(key("events"), []); },
+    async getEvents() {
+      let all = store.get(key("events"), []);
+      if (!store.get(key("seeded")) && bots.length) {
+        // example meets near you so the highlights have something to show in demo mode
+        const c = S.me || LISBOA, h = 3600e3, ids = bots.map(b => b.id);
+        const ex = [
+          { title: "Night Meet JDM (exemplo)", dt: -0.5 * h, d: [0.012, 0.01], n: 9 },
+          { title: "Cars & Coffee VAG (exemplo)", dt: 2 * h, d: [-0.015, 0.02], n: 6 },
+          { title: "Cruise pela Marginal (exemplo)", dt: 5 * h, d: [0.02, -0.025], n: 4 },
+        ];
+        all = all.concat(ex.map((x, i) => ({ id: "demo-ev-" + i, title: x.title, starts_at: new Date(Date.now() + x.dt).toISOString(), place: "Simulado",
+          description: "Evento de demonstração.", lat: c.lat + x.d[0], lng: c.lng + x.d[1], created_by: ids[i], going: ids.slice(0, x.n) })));
+        store.set(key("events"), all); store.set(key("seeded"), true);
+      }
+      return all;
+    },
     async createEvent(e) { const all = store.get(key("events"), []); all.push({ id: "e" + Date.now(), ...e, created_by: S.uid, going: [] }); all.sort((a, b) => a.starts_at.localeCompare(b.starts_at)); store.set(key("events"), all); },
     async deleteEvent(id) { store.set(key("events"), store.get(key("events"), []).filter(e => e.id !== id)); },
     async setRsvp(id, on) { const all = store.get(key("events"), []); const e = all.find(x => x.id === id); if (e) { e.going = (e.going || []).filter(u => u !== S.uid); if (on) e.going.push(S.uid); } store.set(key("events"), all); },
@@ -237,6 +252,14 @@ map.on("error", e => {
 });
 map.on("style.load", neonify);
 map.on("dragstart", () => { S.follow = false; });
+map.on("click", "fuel-dot", e => {
+  const f = e.features?.[0]; if (!f) return;
+  e.originalEvent.stopPropagation(); fuelClick = true;
+  showPlaceCard(f.properties.name || "Bomba de gasolina", "Combustível", { lat: e.lngLat.lat, lng: e.lngLat.lng });
+});
+map.on("mouseenter", "fuel-dot", () => map.getCanvas().style.cursor = "pointer");
+map.on("mouseleave", "fuel-dot", () => map.getCanvas().style.cursor = "");
+let fuelClick = false;
 
 // OpenMapTiles road classes: motorway = autoestrada (A), trunk/primary = nacional (IP, IC, EN), secondary/tertiary = municipal (ER, EM)
 const ROAD_CASING = ["match", ["get", "class"],
@@ -275,6 +298,24 @@ function neonify() {
     map.addSource("traffic", { type: "raster", tileSize: 256, attribution: "Trânsito © TomTom",
       tiles: [`https://api.tomtom.com/traffic/map/4/tile/flow/relative0-dark/{z}/{x}/{y}.png?key=${CFG.tomtomKey}&tileSize=256`] });
     map.addLayer({ id: "traffic", type: "raster", source: "traffic", paint: { "raster-opacity": 0.85 }, layout: { visibility: S.traffic === false ? "none" : "visible" } }, firstSymbol);
+  }
+  // race tracks (OSM highway=raceway) and fuel stations (OSM amenity=fuel), shown when zooming in
+  const vsrc = Object.entries(map.getStyle().sources || {}).find(([, src]) => src.type === "vector")?.[0];
+  const font = (map.getStyle().layers || []).find(l => l.type === "symbol" && l.layout?.["text-font"])?.layout["text-font"];
+  if (vsrc && !map.getLayer("raceway")) {
+    const before = (map.getStyle().layers || []).find(l => l.type === "symbol")?.id;
+    try {
+      map.addLayer({ id: "raceway", type: "line", source: vsrc, "source-layer": "transportation", minzoom: 9, filter: ["==", ["get", "class"], "raceway"],
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#ff2e5a", "line-width": ["interpolate", ["linear"], ["zoom"], 9, 2, 14, 7, 17, 16], "line-blur": 0.5 } }, before);
+      map.addLayer({ id: "raceway-check", type: "line", source: vsrc, "source-layer": "transportation", minzoom: 13, filter: ["==", ["get", "class"], "raceway"],
+        paint: { "line-color": "#ffffff", "line-width": ["interpolate", ["linear"], ["zoom"], 13, 1.5, 17, 6], "line-dasharray": [1, 1] } }, before);
+      map.addLayer({ id: "fuel-dot", type: "circle", source: vsrc, "source-layer": "poi", minzoom: 13, filter: ["==", ["get", "class"], "fuel"],
+        paint: { "circle-color": "#ffb020", "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 4, 17, 8], "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 } });
+      if (font) map.addLayer({ id: "fuel-label", type: "symbol", source: vsrc, "source-layer": "poi", minzoom: 15, filter: ["==", ["get", "class"], "fuel"],
+        layout: { "text-field": ["coalesce", ["get", "name"], "Combustível"], "text-font": font, "text-size": 11, "text-offset": [0, 1.3], "text-anchor": "top" },
+        paint: { "text-color": "#ffd27a", "text-halo-color": T().halo, "text-halo-width": 1.2 } });
+    } catch (e) { console.warn(e); }
   }
   // 3D buildings (OpenMapTiles "building" layer)
   const vec = Object.entries(map.getStyle().sources || {}).find(([, src]) => src.type === "vector")?.[0];
@@ -451,7 +492,7 @@ requestAnimationFrame(drawSpeedo);
 // ---------------- events ----------------
 async function loadEvents() {
   try { S.events = await B.getEvents(); } catch (e) { console.warn(e); }
-  renderEvents(); renderEventMarkers();
+  renderEvents(); renderEventMarkers(); renderHighlights();
 }
 function renderEvents() {
   const list = $("evList");
@@ -510,6 +551,7 @@ map.on("click", e => {
     $("evPickHint").textContent = "Local escolhido no mapa."; $("evPickHint").classList.add("ok");
     $("events").hidden = false; return;
   }
+  if (fuelClick) { fuelClick = false; return; }
   $("card").hidden = true; $("menu").hidden = true;
 });
 $("evForm").addEventListener("submit", async e => {
@@ -599,6 +641,58 @@ $("pForm").addEventListener("submit", async e => {
   try { await B.saveProfile(p); S.profile = { id: S.uid, ...p }; store.set("profile", S.profile); fillProfile(); msg.textContent = "Perfil guardado."; await loadProfiles(); }
   catch (err) { console.warn(err); msg.textContent = err?.code === "23505" ? "Essa alcunha já está em uso. Escolhe outra." : "Não foi possível guardar. Tenta outra vez."; }
   $("pSave").disabled = false;
+});
+
+// ---------------- highlights: popular meets + known tracks ----------------
+// Approximate positions of well-known Portuguese tracks (open the map to see the exact layout)
+const TRACKS = [
+  { id: "estoril", name: "Autódromo do Estoril", kind: "Circuito · 4,2 km", lat: 38.7506, lng: -9.3942 },
+  { id: "aia", name: "Autódromo Internacional do Algarve", kind: "Circuito · 4,7 km", lat: 37.2272, lng: -8.6267 },
+  { id: "braga", name: "Circuito Vasco Sameiro, Braga", kind: "Circuito · 3,0 km", lat: 41.5853, lng: -8.4460 },
+  { id: "vilareal", name: "Circuito Internacional de Vila Real", kind: "Citadino · 4,8 km", lat: 41.2967, lng: -7.7486 },
+  { id: "montalegre", name: "Pista Automóvel de Montalegre", kind: "Rallycross", lat: 41.8228, lng: -7.7948 },
+];
+const trackMarkers = TRACKS.map(t => {
+  const el = document.createElement("div"); el.className = "track-mk"; el.innerHTML = "<i></i>"; el.title = t.name;
+  el.addEventListener("click", e => { e.stopPropagation(); showPlaceCard(t.name, t.kind, t); });
+  return new maplibregl.Marker({ element: el }).setLngLat([t.lng, t.lat]).addTo(map);
+});
+function showPlaceCard(title, sub, at) {
+  const card = $("card"); card.className = "card"; card.hidden = false;
+  card.innerHTML = `<button class="x" aria-label="Fechar">×</button><div><div class="crew">${esc(sub)}</div><h3>${esc(title)}</h3></div>
+    <div class="hint">A ${fmtDist(distM(S.me || LISBOA, at))} de ti</div><div class="formrow"><button class="btn hot small" id="cardGo">Ir para aqui</button></div>`;
+  card.querySelector(".x").onclick = () => card.hidden = true;
+  $("cardGo").onclick = () => { card.hidden = true; planRoute({ title, lat: at.lat, lng: at.lng }); };
+}
+function popularMeets() {
+  const now = Date.now();
+  return S.events
+    .filter(e => { const t = new Date(e.starts_at).getTime(); return t > now - 4 * 3600e3 && t < now + 24 * 3600e3; })
+    .sort((a, b) => (b.going || []).length - (a.going || []).length)
+    .slice(0, 6);
+}
+function renderHighlights() {
+  const ref = S.me || LISBOA, now = Date.now();
+  const meets = popularMeets();
+  $("hlMeets").innerHTML = meets.length ? meets.map(e => {
+    const live = new Date(e.starts_at).getTime() <= now;
+    return `<button class="hlcard" data-ev="${esc(e.id)}"><span class="big">${(e.going || []).length} vão</span><b>${esc(e.title)}</b>
+      <span>${live ? '<em class="live">● A decorrer</em>' : esc(fmtWhen(e.starts_at))}</span><span>${fmtDist(distM(ref, e))}</span></button>`;
+  }).join("") : `<p class="hlempty">Não há meets nas próximas 24 horas. Cria um em Eventos.</p>`;
+  $("hlTracks").innerHTML = [...TRACKS].sort((a, b) => distM(ref, a) - distM(ref, b)).map(t =>
+    `<button class="hlcard track" data-track="${t.id}"><span class="flag"></span><b>${esc(t.name)}</b><span>${esc(t.kind)}</span><span>${fmtDist(distM(ref, t))}</span></button>`).join("");
+}
+$("hlMeets").addEventListener("click", e => {
+  const b = e.target.closest("[data-ev]"); if (!b) return;
+  const ev = S.events.find(x => x.id === b.dataset.ev); if (!ev) return;
+  S.follow = false; if (innerWidth < 760) setSheet(false);
+  map.easeTo({ center: [ev.lng, ev.lat], zoom: 15 }); showEventCard(ev.id);
+});
+$("hlTracks").addEventListener("click", e => {
+  const b = e.target.closest("[data-track]"); if (!b) return;
+  const t = TRACKS.find(x => x.id === b.dataset.track);
+  S.follow = false; if (innerWidth < 760) setSheet(false);
+  map.easeTo({ center: [t.lng, t.lat], zoom: 14.5, pitch: 45 }); showPlaceCard(t.name, t.kind, t);
 });
 
 // ---------------- search & routing ----------------
@@ -897,7 +991,22 @@ $("homeBtn").onclick = () => {
 };
 const panel = $("panel");
 function sheetH() { document.documentElement.style.setProperty("--sheet", (innerWidth < 760 ? panel.offsetHeight : 0) + "px"); }
-$("sheetHandle").onclick = () => { panel.classList.toggle("collapsed"); sheetH(); };
+function setSheet(open) { panel.classList.toggle("collapsed", !open); sheetH(); }
+// swipe up/down on the sheet's top bar (a tap also toggles it)
+(() => {
+  const head = $("sheetHead"); let y0 = null, moved = 0;
+  head.addEventListener("pointerdown", e => { if (innerWidth >= 760 || e.target.closest(".chip")) return; y0 = e.clientY; moved = 0; head.setPointerCapture(e.pointerId); panel.classList.add("dragging"); });
+  head.addEventListener("pointermove", e => { if (y0 == null) return; moved = e.clientY - y0; });
+  const end = () => {
+    if (y0 == null) return; y0 = null; panel.classList.remove("dragging");
+    if (moved < -25) setSheet(true); else if (moved > 25) setSheet(false); else setSheet(panel.classList.contains("collapsed"));
+  };
+  head.addEventListener("pointerup", end); head.addEventListener("pointercancel", end);
+  // swipe down from the top of the list closes it
+  let ty = null; const body = $("pbody");
+  body.addEventListener("touchstart", e => { ty = body.scrollTop <= 0 ? e.touches[0].clientY : null; }, { passive: true });
+  body.addEventListener("touchend", e => { if (ty != null && e.changedTouches[0].clientY - ty > 60) setSheet(false); ty = null; }, { passive: true });
+})();
 addEventListener("resize", sheetH);
 if (innerWidth >= 760) panel.classList.remove("collapsed");
 document.addEventListener("keydown", e => { if (e.key === "Escape") { ["events", "profile", "menu", "search"].forEach(i => $(i).hidden = true); $("card").hidden = true; S.pick = false; } });
@@ -917,6 +1026,9 @@ $("startNoGps").onclick = () => { $("welcome").hidden = true; gpsMsg("Sem locali
   if (map.loaded()) { loadEvents(); loadReports(); }
   loadProfiles();
   setInterval(loadReports, 60000);
+  setInterval(renderHighlights, 30000);
+  if (B.mode === "demo") setTimeout(loadEvents, 3000);
+  renderHighlights();
 })();
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});

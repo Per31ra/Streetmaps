@@ -48,26 +48,45 @@
   <div class="gpsbadge" id="gpsBadge" hidden></div>
 
   <aside class="panel collapsed" id="panel">
-    <header>
-      <button class="sheet-handle" id="sheetHandle" aria-label="Expandir lista"></button>
+    <header id="sheetHead">
+      <button class="sheet-handle" id="sheetHandle" aria-label="Abrir o painel"></button>
       <div class="ph"><h2>Na estrada</h2><span class="live"><i></i><span id="onlineCount">0</span> perto</span></div>
-      <div class="chips seg" role="group" aria-label="Quem mostrar">
-        <button class="chip" data-filter="all" aria-pressed="true">Todos</button>
-        <button class="chip" data-filter="crew" aria-pressed="false">A minha crew</button>
-      </div>
+      <p class="swipehint">Desliza para cima</p>
     </header>
-    <div class="list" id="list"></div>
+    <div class="pbody" id="pbody">
+      <section class="hl">
+        <h3>Meets em alta</h3>
+        <div class="hlrow" id="hlMeets"></div>
+        <h3>Pistas em destaque</h3>
+        <div class="hlrow" id="hlTracks"></div>
+      </section>
+      <section class="drivers">
+        <h3>Condutores perto</h3>
+        <div class="chips seg" role="group" aria-label="Quem mostrar">
+          <button class="chip" data-filter="all" aria-pressed="true">Todos</button>
+          <button class="chip" data-filter="crew" aria-pressed="false">A minha crew</button>
+        </div>
+        <div class="list" id="list"></div>
+      </section>
     <footer>
+      <div class="toggle">
+        <div>Tema</div>
+        <div class="chips seg themeseg" role="group" aria-label="Tema">
+          <button class="chip" data-theme-pick="street" aria-pressed="true">Street</button>
+          <button class="chip" data-theme-pick="vice" aria-pressed="false">Vice</button>
+        </div>
+      </div>
       <div class="toggle">
         <div>Modo fantasma<small>Vês os outros, ninguém te vê</small></div>
         <button class="switch" id="ghost" role="switch" aria-checked="false" aria-label="Modo fantasma"></button>
       </div>
-      <div class="legend" aria-label="Legenda das estradas"><span><i style="background:#2f86ff"></i>Autoestrada</span><span><i style="background:#ffd23d"></i>Nacional</span><span><i style="background:#2fe07a"></i>Municipal</span></div>
+      <div class="legend" aria-label="Legenda das estradas"><span><i style="background:#2f86ff"></i>Autoestrada</span><span><i style="background:#ffd23d"></i>Nacional</span><span><i style="background:#2fe07a"></i>Municipal</span><span><i class="lg-race"></i>Pista</span><span><i class="lg-fuel"></i>Combustível</span></div>
       <div class="toggle">
         <div>Zona privada<small id="homeHint">Esconde-te perto de casa (500 m)</small></div>
         <button class="pill small" id="homeBtn">Definir aqui</button>
       </div>
     </footer>
+    </div>
   </aside>
 
   <section class="card" id="card" hidden></section>
