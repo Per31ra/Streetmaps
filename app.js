@@ -102,6 +102,7 @@ const S = {
   reports: [],
   filter: "all",
   theme: store.get("theme", "street"),
+  sat: store.get("sat", false),
   traffic: store.get("traffic", true),
   pick: false,
   pickPos: null,
@@ -316,6 +317,15 @@ function neonify() {
         layout: { "text-field": ["coalesce", ["get", "name"], "Combustível"], "text-font": font, "text-size": 11, "text-offset": [0, 1.3], "text-anchor": "top" },
         paint: { "text-color": "#ffd27a", "text-halo-color": T().halo, "text-halo-width": 1.2 } });
     } catch (e) { console.warn(e); }
+  }
+  // satellite imagery (TomTom with the key, otherwise Esri World Imagery), drawn under roads and labels
+  if (!map.getSource("sat")) {
+    const firstLine = (map.getStyle().layers || []).find(l => l.type === "line" || l.type === "symbol")?.id;
+    const tiles = CFG.tomtomKey
+      ? [`https://api.tomtom.com/map/1/tile/sat/main/{z}/{x}/{y}.jpg?key=${CFG.tomtomKey}`]
+      : ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"];
+    map.addSource("sat", { type: "raster", tiles, tileSize: 256, maxzoom: 19, attribution: CFG.tomtomKey ? "Satélite © TomTom" : "Satélite © Esri, Maxar, Earthstar Geographics" });
+    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: S.sat ? "visible" : "none" }, paint: { "raster-saturation": -0.1, "raster-brightness-max": 0.85 } }, firstLine);
   }
   // 3D buildings (OpenMapTiles "building" layer)
   const vec = Object.entries(map.getStyle().sources || {}).find(([, src]) => src.type === "vector")?.[0];
@@ -958,6 +968,21 @@ if (CFG.tomtomKey && CFG.showTraffic) {
   };
 }
 $("rClose").onclick = endNav;
+
+// ---------------- satellite toggle ----------------
+function applySat() {
+  $("satBtn").classList.toggle("on", S.sat); $("satLbl").textContent = S.sat ? "Mapa" : "Satélite";
+  document.body.classList.toggle("sat", S.sat);
+  if (!map.getLayer("sat")) return;
+  map.setLayoutProperty("sat", "visibility", S.sat ? "visible" : "none");
+  // over imagery: thinner, slightly see-through roads and no 3D blocks
+  for (const l of map.getStyle().layers || []) {
+    if (l.type === "line" && !/^route|^home|^raceway/.test(l.id)) try { map.setPaintProperty(l.id, "line-opacity", S.sat ? 0.55 : 1); } catch {}
+    if (l.type === "fill-extrusion") try { map.setLayoutProperty(l.id, "visibility", S.sat ? "none" : "visible"); } catch {}
+  }
+}
+$("satBtn").onclick = () => { S.sat = !S.sat; store.set("sat", S.sat); applySat(); };
+map.on("style.load", applySat);
 
 // ---------------- controls ----------------
 document.querySelectorAll("[data-theme-pick]").forEach(b => b.onclick = () => { S.theme = b.dataset.themePick; store.set("theme", S.theme); applyTheme(); });

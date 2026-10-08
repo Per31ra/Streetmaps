@@ -11,4 +11,7 @@ window.STREETMAPS_CONFIG = {
   tomtomKey: "EU3rWeckS99pA7IIIWaOBapk0vyFmm4x",
   // false: o trânsito só é usado para escolher a rota mais rápida, sem aparecer no ecrã
   showTraffic: false,
+  // Spotify: cria uma app grátis em developer.spotify.com/dashboard e cola aqui o Client ID
+  // (em Redirect URIs põe exatamente https://per31ra.github.io/Streetmaps/)
+  spotifyClientId: "",
 };

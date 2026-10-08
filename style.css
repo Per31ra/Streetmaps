@@ -350,3 +350,38 @@ body.navigating .route{top:calc(var(--safe-top) + 64px)}
   .panel.dragging{transition:none}
 }
 @media (max-width:760px){.panel:not(.collapsed) ~ .speedo,.panel:not(.collapsed) ~ .tools,.panel:not(.collapsed) ~ .menu{display:none}}
+
+/* ---------- v7: music bar + satellite ---------- */
+.musicchip{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--safe-top) + 58px);z-index:3;display:flex;align-items:center;gap:7px;max-width:min(300px,calc(100% - 32px));padding:5px 12px 5px 8px;border-radius:999px;background:var(--frost);border:.5px solid var(--hair);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);font-family:var(--ios);font-size:13px;color:var(--ink);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.musicchip svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;flex:none}
+.musicchip img{width:22px;height:22px;border-radius:5px;flex:none}
+.musicchip .mt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.musicchip .ma{color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:90px}
+.musicchip.on{border-color:rgba(30,215,96,.5)}
+.eq{display:flex;gap:2px;align-items:flex-end;height:12px;flex:none}
+.eq i{width:3px;height:4px;background:#1ed760;border-radius:1px}
+.eq.go i{animation:eq .9s infinite ease-in-out}.eq.go i:nth-child(2){animation-delay:.2s}.eq.go i:nth-child(3){animation-delay:.4s}
+@keyframes eq{50%{height:12px}}
+.musicpanel{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--safe-top) + 94px);z-index:6;width:min(320px,calc(100% - 32px));padding:14px;border-radius:20px;background:rgba(14,16,22,.92);border:.5px solid var(--hair);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);display:flex;flex-direction:column;gap:10px;font-family:var(--ios);box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.musicpanel .hint.small{font-size:11px}
+.mbtn{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:14px;border:0;font-weight:600;font-size:15px;text-decoration:none;color:#fff}
+.mbtn .dot{width:20px;height:20px;border-radius:50%;flex:none}
+.mbtn.spotify{background:#1db954;color:#06120a}.mbtn.spotify .dot{background:#06120a}
+.mbtn.apple{background:linear-gradient(135deg,#fa233b,#fb5c74)}.mbtn.apple .dot{background:#fff}
+.mnow{display:flex;gap:10px;align-items:center;min-width:0}
+.mnow img{width:56px;height:56px;border-radius:10px;flex:none}
+.mnow div{min-width:0}.mnow b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mnow span{font-size:13px;color:var(--mute)}
+.mctl{display:flex;justify-content:center;gap:18px}
+.mctl button{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.08);font-size:18px;color:var(--ink)}
+.mctl .pp{width:54px;height:54px;background:#1db954;color:#06120a;font-size:22px}
+a.pill{text-decoration:none}
+:root[data-theme="vice"] .musicpanel{background:rgba(40,16,60,.94)}
+body.sat .maplibregl-canvas{filter:none}
+@media (max-width:760px){
+  .musicchip{top:calc(var(--safe-top) + 104px)}
+  .musicpanel{top:calc(var(--safe-top) + 140px)}
+  .route{top:calc(var(--safe-top) + 140px)}
+  .card{top:calc(var(--safe-top) + 140px)}
+}
+body.navigating .musicchip{top:auto;bottom:calc(var(--safe-bottom) + 92px)}
+body.navigating .musicpanel{top:auto;bottom:calc(var(--safe-bottom) + 130px)}

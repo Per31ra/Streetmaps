@@ -14,6 +14,8 @@ O mapa ao vivo da comunidade tuning: mapa real do mundo inteiro com visual néon
 - Eventos e encontros no mapa, com confirmação de presença.
 - Painel da comunidade (no telemóvel, desliza para cima): meets em alta, pistas em destaque, condutores perto, tema e privacidade.
 - No mapa: pistas de corrida (riscadas a vermelho e branco) e bombas de gasolina ao aproximar.
+- Barra de música no topo: liga o Spotify para ver o que está a tocar e mudar de música, ou abre o Apple Music.
+- Botão **Satélite** para alternar entre o mapa e a vista de satélite.
 - Câmara em 3.ª pessoa durante a rota, com prédios em 3D.
 - Dois temas, escolhidos no Perfil: **Street** (néon azul-noite) e **Vice** (pôr do sol, rosa e turquesa, inspirado em Miami; sem logótipos nem fontes de jogos).
 
@@ -49,6 +51,15 @@ Como ativar:
 1. Cria uma conta em developer.tomtom.com e copia a chave da API (o plano gratuito dá vários milhares de pedidos por dia).
 2. No painel da TomTom, restringe a chave ao teu domínio (`per31ra.github.io`).
 3. Cola a chave em `config.js`, no campo `tomtomKey`.
+
+## Spotify (gratuito)
+
+1. Entra em developer.spotify.com/dashboard e carrega em **Create app**.
+2. Em **Redirect URIs** põe exatamente `https://per31ra.github.io/Streetmaps/` e marca **Web API**.
+3. Copia o **Client ID** para `config.js`, no campo `spotifyClientId`.
+4. Enquanto a app do Spotify estiver em modo de desenvolvimento, só as contas que adicionares em **User Management** a conseguem ligar.
+
+Mudar de música precisa de Spotify Premium. O Apple Music só abre a app, porque a Apple não deixa controlar a música a partir de sites sem uma conta paga de programador.
 
 ## Privacidade
 
