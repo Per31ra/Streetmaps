@@ -9,6 +9,7 @@ const CFG = Object.assign({
   homeRadiusMeters: 500,
   geocoderUrl: "https://photon.komoot.io/api/",
   routerUrl: "https://router.project-osrm.org/route/v1/driving/",
+  tomtomKey: "",
 }, window.STREETMAPS_CONFIG || {});
 
 const $ = id => document.getElementById(id);
@@ -74,6 +75,7 @@ const S = {
   events: [],
   reports: [],
   filter: "all",
+  traffic: store.get("traffic", true),
   pick: false,
   pickPos: null,
 };
@@ -214,37 +216,44 @@ const ROAD_COLOR = ["match", ["get", "class"],
   "motorway", "#2f86ff",
   ["trunk", "primary"], "#ffd23d",
   ["secondary", "tertiary"], "#2fe07a",
-  ["minor", "service"], "#33415c",
-  "#232d42"];
+  ["minor", "service"], "#55658a",
+  "#414f6e"];
 const ROAD_CASING = ["match", ["get", "class"],
   "motorway", "#0b2a5c",
   ["trunk", "primary"], "#4d3a07",
   ["secondary", "tertiary"], "#0b4325",
-  "#0d1320"];
+  "#1a2438"];
 function neonify() {
   const layers = map.getStyle()?.layers || [];
   const set = (id, prop, val) => { try { map.setPaintProperty(id, prop, val); } catch {} };
   for (const l of layers) {
     const id = l.id.toLowerCase();
-    if (l.type === "background") set(l.id, "background-color", "#07090f");
+    if (l.type === "background") set(l.id, "background-color", "#131b2c");
     else if (l.type === "fill") {
-      if (/water|ocean|sea|river|lake/.test(id)) set(l.id, "fill-color", "#08162a");
-      else if (/park|wood|forest|grass|landcover|green/.test(id)) set(l.id, "fill-color", "#0c1c19");
-      else if (/building/.test(id)) { set(l.id, "fill-color", "#111a2b"); set(l.id, "fill-outline-color", "#1b2a44"); }
-      else set(l.id, "fill-color", "#0b111d");
+      if (/water|ocean|sea|river|lake/.test(id)) set(l.id, "fill-color", "#102a52");
+      else if (/park|wood|forest|grass|landcover|green/.test(id)) set(l.id, "fill-color", "#15332c");
+      else if (/building/.test(id)) { set(l.id, "fill-color", "#1d2a42"); set(l.id, "fill-outline-color", "#2c3d5c"); }
+      else set(l.id, "fill-color", "#162034");
     }
-    else if (l.type === "fill-extrusion") { set(l.id, "fill-extrusion-color", "#121c2f"); set(l.id, "fill-extrusion-opacity", 0.8); }
+    else if (l.type === "fill-extrusion") { set(l.id, "fill-extrusion-color", "#22304b"); set(l.id, "fill-extrusion-opacity", 0.8); }
     else if (l.type === "line") {
-      if (/water|river|stream|canal/.test(id)) set(l.id, "line-color", "#0d2340");
-      else if (/boundary|admin/.test(id)) set(l.id, "line-color", "#2a3550");
-      else if (/rail/.test(id)) set(l.id, "line-color", "#232c40");
+      if (/water|river|stream|canal/.test(id)) set(l.id, "line-color", "#1a3a6a");
+      else if (/boundary|admin/.test(id)) set(l.id, "line-color", "#3b4868");
+      else if (/rail/.test(id)) set(l.id, "line-color", "#36415a");
       else if (l["source-layer"] === "transportation" || /road|street|highway|motorway|trunk|primary|secondary|tertiary|minor|service|path|track|bridge|tunnel/.test(id)) {
         // autoestradas azul, nacionais amarelo, municipais verde
         if (/casing|outline/.test(id)) set(l.id, "line-color", ROAD_CASING);
         else set(l.id, "line-color", ROAD_COLOR);
       }
     }
-    else if (l.type === "symbol") { set(l.id, "text-color", "#aab8d0"); set(l.id, "text-halo-color", "#07090f"); set(l.id, "text-halo-width", 1.2); }
+    else if (l.type === "symbol") { set(l.id, "text-color", "#c9d5ea"); set(l.id, "text-halo-color", "#131b2c"); set(l.id, "text-halo-width", 1.2); }
+  }
+  // live traffic flow overlay (TomTom), drawn under the labels
+  if (CFG.tomtomKey && !map.getSource("traffic")) {
+    const firstSymbol = (map.getStyle().layers || []).find(l => l.type === "symbol")?.id;
+    map.addSource("traffic", { type: "raster", tileSize: 256, attribution: "Trânsito © TomTom",
+      tiles: [`https://api.tomtom.com/traffic/map/4/tile/flow/relative0-dark/{z}/{x}/{y}.png?key=${CFG.tomtomKey}&tileSize=256`] });
+    map.addLayer({ id: "traffic", type: "raster", source: "traffic", paint: { "raster-opacity": 0.85 }, layout: { visibility: S.traffic === false ? "none" : "visible" } }, firstSymbol);
   }
   // privacy zone layer
   if (!map.getSource("home")) {
@@ -561,7 +570,7 @@ $("pForm").addEventListener("submit", async e => {
 });
 
 // ---------------- search & routing ----------------
-const R = { route: null, steps: [], step: 1, dest: null, nav: false, offCount: 0, lastReroute: 0 };
+const R = { options: [], sel: 0, route: null, steps: [], step: 1, dest: null, nav: false, offCount: 0, lastReroute: 0 };
 let searchAbort = null, searchT = null;
 async function geocode(q) {
   searchAbort?.abort(); searchAbort = new AbortController();
@@ -602,33 +611,107 @@ $("sResults").addEventListener("click", e => {
 });
 $("searchBtn").onclick = () => { $("search").hidden = false; setTimeout(() => $("sInput").focus(), 50); };
 
-async function fetchRoute(from, to) {
-  const url = `${CFG.routerUrl}${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=true`;
+// Every router is normalised to {distance, duration, noTraffic, delay, geometry, steps, jams}
+const TT = CFG.tomtomKey ? "tomtom" : "osrm";
+function ttArrow(m = "") {
+  if (m === "ARRIVE" || m.startsWith("ARRIVE")) return "◎";
+  if (m.includes("ROUNDABOUT")) return "↻";
+  if (m.includes("UTURN")) return "↶";
+  if (m.includes("SHARP_LEFT")) return "↙";
+  if (m.includes("SHARP_RIGHT")) return "↘";
+  if (/BEAR_LEFT|KEEP_LEFT|SLIGHT_LEFT|EXIT_LEFT/.test(m)) return "↖";
+  if (/BEAR_RIGHT|KEEP_RIGHT|SLIGHT_RIGHT|EXIT_RIGHT|MOTORWAY_EXIT/.test(m)) return "↗";
+  if (m.includes("LEFT")) return "←";
+  if (m.includes("RIGHT")) return "→";
+  return "↑";
+}
+async function fetchRoutes(from, to) {
+  if (TT === "tomtom") {
+    const url = `https://api.tomtom.com/routing/1/calculateRoute/${from.lat},${from.lng}:${to.lat},${to.lng}/json?key=${CFG.tomtomKey}` +
+      `&traffic=true&maxAlternatives=2&alternativeType=betterRoute&routeType=fastest&travelMode=car&computeTravelTimeFor=all` +
+      `&sectionType=traffic&instructionsType=text&language=pt-PT`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("tomtom " + res.status);
+    const j = await res.json();
+    if (!j.routes?.length) throw new Error("no route");
+    return j.routes.map(r => {
+      const coords = r.legs.flatMap(l => l.points).map(p => [p.longitude, p.latitude]);
+      const ins = r.guidance?.instructions || [], sum = r.summary;
+      return {
+        distance: sum.lengthInMeters, duration: sum.travelTimeInSeconds,
+        noTraffic: sum.noTrafficTravelTimeInSeconds ?? null, delay: sum.trafficDelayInSeconds ?? 0,
+        geometry: { type: "LineString", coordinates: coords },
+        steps: ins.map((x, i) => ({
+          maneuver: { type: x.maneuver === "ARRIVE" ? "arrive" : x.maneuver === "DEPART" ? "depart" : "tomtom", location: [x.point.longitude, x.point.latitude] },
+          name: x.street || "", distance: (ins[i + 1]?.routeOffsetInMeters ?? sum.lengthInMeters) - x.routeOffsetInMeters,
+          text: x.message, arrow: ttArrow(x.maneuver),
+        })),
+        jams: (r.sections || []).filter(x => x.sectionType === "TRAFFIC").map(x => ({ from: x.startPointIndex, to: x.endPointIndex, cat: x.simpleCategory || "JAM", delay: x.effectiveSpeedInKmh })),
+      };
+    });
+  }
+  const url = `${CFG.routerUrl}${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
   const res = await fetch(url);
   if (!res.ok) throw new Error("router " + res.status);
   const j = await res.json();
   if (j.code !== "Ok" || !j.routes?.length) throw new Error("no route");
-  return j.routes[0];
+  return j.routes.map(r => ({ distance: r.distance, duration: r.duration, noTraffic: null, delay: null, geometry: r.geometry, steps: r.legs?.[0]?.steps || [], jams: [] }));
 }
 async function planRoute(dest) {
   const from = S.me || { lat: map.getCenter().lat, lng: map.getCenter().lng };
   R.dest = dest;
   $("route").hidden = false; $("route").classList.remove("nav"); $("navLine").hidden = true;
-  $("rTime").textContent = "A calcular…"; $("rMeta").textContent = ""; $("rDest").textContent = dest.title; $("rAlerts").innerHTML = "";
+  $("rTime").textContent = "A calcular…"; $("rMeta").textContent = ""; $("rDest").textContent = dest.title; $("rAlerts").innerHTML = ""; $("rOpts").innerHTML = "";
   try {
-    setRoute(await fetchRoute(from, dest));
+    R.options = await fetchRoutes(from, dest);
+    tagOptions();
+    selectRoute(0);
     fitRoute();
   } catch (e) { console.warn(e); $("rTime").textContent = "Sem rota"; $("rMeta").textContent = "Não consegui calcular o caminho até aí."; }
 }
-function setRoute(route) {
-  R.route = route; R.steps = route.legs?.[0]?.steps || []; R.step = Math.min(1, R.steps.length - 1); R.offCount = 0;
-  const data = { type: "Feature", geometry: route.geometry, properties: {} };
-  if (map.getSource("route")) map.getSource("route").setData(data);
-  else {
-    map.addSource("route", { type: "geojson", data });
-    map.addLayer({ id: "route-glow", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ff6a1a", "line-width": 16, "line-opacity": 0.25, "line-blur": 6 } });
-    map.addLayer({ id: "route-line", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ff8a3d", "line-width": 6 } });
+// label the options: fastest, and the one with least traffic (often a longer way round)
+function tagOptions() {
+  const o = R.options; if (!o.length) return;
+  const fastest = o.reduce((a, b) => b.duration < a.duration ? b : a);
+  o.forEach(r => r.tags = []);
+  fastest.tags.push("Mais rápida");
+  if (o.some(r => r.delay != null)) {
+    const calm = o.reduce((a, b) => (b.delay ?? 1e9) < (a.delay ?? 1e9) ? b : a);
+    if (calm !== fastest && (fastest.delay - calm.delay) >= 60) calm.tags.push("Menos trânsito");
+    else if (calm === fastest && o.length > 1) fastest.tags.push("Menos trânsito");
   }
+  // put the fastest first
+  R.options.sort((a, b) => a.duration - b.duration);
+}
+function renderOptions() {
+  const el = $("rOpts"), o = R.options || [];
+  const base = o[0];
+  el.innerHTML = o.map((r, i) => {
+    const extraKm = r.distance - base.distance;
+    const traffic = r.delay == null ? "" : r.delay < 60 ? `<span class="tr ok">Trânsito fluido</span>` : `<span class="tr ${r.delay > 600 ? "bad" : "mid"}">+${fmtDur(r.delay)} de trânsito</span>`;
+    return `<button class="opt${i === R.sel ? " sel" : ""}" data-i="${i}"><b>${fmtDur(r.duration)}</b><span>${fmtDist(r.distance)}${i && extraKm > 200 ? " (+" + fmtDist(extraKm) + ")" : ""}</span>${traffic}${(r.tags || []).map(t => `<em>${t}</em>`).join("")}</button>`;
+  }).join("") + (TT === "osrm" ? `<p class="hint">Trânsito em tempo real desligado. Tempos estimados sem trânsito.</p>` : "");
+}
+$("rOpts").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (b) selectRoute(+b.dataset.i); });
+function selectRoute(i) { R.sel = i; setRoute(R.options[i]); renderOptions(); }
+function drawRoutes() {
+  const feats = (R.options || []).map((r, i) => ({ type: "Feature", geometry: r.geometry, properties: { sel: i === R.sel } }));
+  if (R.nav) feats.splice(0, feats.length, { type: "Feature", geometry: R.route.geometry, properties: { sel: true } });
+  const jams = (R.route?.jams || []).map(j => ({ type: "Feature", properties: { cat: j.cat }, geometry: { type: "LineString", coordinates: R.route.geometry.coordinates.slice(j.from, j.to + 1) } })).filter(f => f.geometry.coordinates.length > 1);
+  const data = { type: "FeatureCollection", features: feats }, jdata = { type: "FeatureCollection", features: jams };
+  if (map.getSource("route")) { map.getSource("route").setData(data); map.getSource("route-jams").setData(jdata); return; }
+  map.addSource("route", { type: "geojson", data });
+  map.addSource("route-jams", { type: "geojson", data: jdata });
+  const lay = { "line-cap": "round", "line-join": "round" };
+  map.addLayer({ id: "route-alt", type: "line", source: "route", filter: ["==", ["get", "sel"], false], layout: lay, paint: { "line-color": "#8a97b3", "line-width": 5, "line-opacity": 0.7 } });
+  map.addLayer({ id: "route-glow", type: "line", source: "route", filter: ["==", ["get", "sel"], true], layout: lay, paint: { "line-color": "#ff6a1a", "line-width": 16, "line-opacity": 0.25, "line-blur": 6 } });
+  map.addLayer({ id: "route-line", type: "line", source: "route", filter: ["==", ["get", "sel"], true], layout: lay, paint: { "line-color": "#ff8a3d", "line-width": 6 } });
+  map.addLayer({ id: "route-jams", type: "line", source: "route-jams", layout: lay, paint: { "line-width": 6,
+    "line-color": ["match", ["get", "cat"], "JAM", "#ff3b3b", "ROAD_CLOSURE", "#a10f2a", "ROAD_WORK", "#ffb020", "#ff7a3d"] } });
+}
+function setRoute(route) {
+  R.route = route; R.steps = route.steps || []; R.step = Math.min(1, R.steps.length - 1); R.offCount = 0;
+  drawRoutes();
   updateEta(route.distance, route.duration);
   renderRouteAlerts();
 }
@@ -668,6 +751,7 @@ function renderRouteAlerts() {
 const MOD = { left: "à esquerda", right: "à direita", "slight left": "ligeiramente à esquerda", "slight right": "ligeiramente à direita", "sharp left": "bem à esquerda", "sharp right": "bem à direita", straight: "em frente", uturn: "inverte a marcha" };
 const ARROW = { left: "←", right: "→", "slight left": "↖", "slight right": "↗", "sharp left": "↙", "sharp right": "↘", straight: "↑", uturn: "↶" };
 function instruction(st) {
+  if (st.text) return { arrow: st.arrow || "↑", text: st.text };
   const m = st.maneuver || {}, mod = MOD[m.modifier] || "", name = st.name || st.ref || "";
   const onto = name ? " para " + name : "";
   switch (m.type) {
@@ -685,14 +769,15 @@ function instruction(st) {
 function startNav() {
   if (!R.route) return;
   if (!S.me) { toast("Ativa a localização para seguires a rota"); return; }
-  R.nav = true; S.follow = true;
+  R.nav = true; S.follow = true; drawRoutes();
   $("route").classList.add("nav"); $("navLine").hidden = false;
   map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 17, pitch: 60, duration: 800 });
   navTick();
 }
 function endNav() {
-  R.nav = false; R.route = null; R.steps = []; $("route").hidden = true;
-  if (map.getSource("route")) map.getSource("route").setData({ type: "FeatureCollection", features: [] });
+  R.nav = false; R.route = null; R.steps = []; R.options = []; $("route").hidden = true;
+  const empty = { type: "FeatureCollection", features: [] };
+  map.getSource("route")?.setData(empty); map.getSource("route-jams")?.setData(empty);
 }
 async function navTick() {
   if (!R.nav || !R.route || !S.me) return;
@@ -712,10 +797,20 @@ async function navTick() {
   if (distToRoute(S.me) > 60) R.offCount++; else R.offCount = 0;
   if (R.offCount >= 2 && Date.now() - R.lastReroute > 15000) {
     R.lastReroute = Date.now(); R.offCount = 0; toast("A recalcular a rota…");
-    try { setRoute(await fetchRoute(S.me, R.dest)); } catch (e) { console.warn(e); }
+    try { const o = await fetchRoutes(S.me, R.dest); R.options = o; setRoute(o.reduce((a, b) => b.duration < a.duration ? b : a)); } catch (e) { console.warn(e); }
   }
 }
 $("rStart").onclick = startNav;
+if (CFG.tomtomKey) {
+  $("trafficBtn").hidden = false;
+  const paint = () => $("trafficBtn").classList.toggle("on", S.traffic);
+  paint();
+  $("trafficBtn").onclick = () => {
+    S.traffic = !S.traffic; store.set("traffic", S.traffic); paint();
+    if (map.getLayer("traffic")) map.setLayoutProperty("traffic", "visibility", S.traffic ? "visible" : "none");
+    toast(S.traffic ? "Trânsito ligado" : "Trânsito desligado");
+  };
+}
 $("rClose").onclick = endNav;
 
 // ---------------- controls ----------------

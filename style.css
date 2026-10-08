@@ -270,3 +270,16 @@ button:focus-visible{outline:2px solid var(--heat);outline-offset:2px}
 @media (max-width:760px){.card{top:calc(var(--safe-top) + 104px)}}
 .menu{bottom:calc(var(--safe-bottom) + 88px)}
 @media (max-width:760px){.menu{bottom:calc(var(--sheet,60px) + 80px)}}
+/* ---------- v4: route options + traffic ---------- */
+:root{--night:#131b2c}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:grid;grid-template-columns:auto 1fr;column-gap:10px;row-gap:3px;align-items:baseline;text-align:left;padding:8px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid transparent;font-family:var(--ios)}
+.opt b{font-family:var(--f-display);font-style:italic;font-weight:900;font-size:20px}
+.opt span{color:var(--mute);font-size:13px}
+.opt .tr{grid-column:1/-1;font-size:12px;font-weight:600}
+.opt .tr.ok{color:#2fe07a}.opt .tr.mid{color:#ffb020}.opt .tr.bad{color:#ff3b3b}
+.opt em{font-style:normal;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:rgba(47,224,122,.15);color:#2fe07a;justify-self:start}
+.opt em+em{grid-column:2}
+.opt.sel{border-color:var(--heat);background:rgba(255,106,26,.12)}
+.route.nav .opts{display:none}
+.fab.on{color:#2fe07a;box-shadow:0 0 0 1.5px rgba(47,224,122,.6),0 6px 20px rgba(0,0,0,.45)}

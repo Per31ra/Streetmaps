@@ -35,6 +35,18 @@ A localização só funciona em HTTPS, e o GitHub Pages já é HTTPS.
 
 A chave `anon` é pública por natureza; quem protege os dados são as regras de acesso (RLS) definidas no `schema.sql`. Nunca coloques a chave `service_role` neste repositório.
 
+## Trânsito em tempo real (TomTom, gratuito)
+
+Sem chave, as rotas mostram alternativas mas os tempos não contam com o trânsito. Com uma chave da TomTom a app passa a:
+- calcular as rotas com o trânsito do momento e mostrar quanto tempo se perde em cada uma;
+- sugerir a rota com **menos trânsito**, mesmo que seja mais longa;
+- pintar os engarrafamentos na rota e mostrar o trânsito no mapa (botão "Trânsito").
+
+Como ativar:
+1. Cria uma conta em developer.tomtom.com e copia a chave da API (o plano gratuito dá vários milhares de pedidos por dia).
+2. No painel da TomTom, restringe a chave ao teu domínio (`per31ra.github.io`).
+3. Cola a chave em `config.js`, no campo `tomtomKey`.
+
 ## Privacidade
 
 - A posição só é partilhada com a app aberta, a cada 3 segundos, e nunca fica guardada na base de dados.

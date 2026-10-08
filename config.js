@@ -6,4 +6,7 @@ window.STREETMAPS_CONFIG = {
   supabaseUrl: "",      // ex.: "https://abcdefgh.supabase.co"
   supabaseAnonKey: "",  // Project Settings > API > anon public
   mapStyle: "https://tiles.openfreemap.org/styles/dark",
+  // Trânsito em tempo real e rotas que o evitam: chave gratuita em developer.tomtom.com
+  // (restringe a chave ao teu domínio, por exemplo per31ra.github.io, no painel da TomTom).
+  tomtomKey: "",
 };
