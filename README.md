@@ -4,6 +4,15 @@ O mapa ao vivo da comunidade tuning: mapa real do mundo inteiro com visual néon
 
 É uma app web: abre-se no browser do telemóvel e pode ser adicionada ao ecrã principal ("Adicionar ao ecrã principal" no Safari ou no Chrome), ficando como uma app.
 
+## O que faz
+
+- Mapa real do mundo com estradas por cor: autoestradas a azul, nacionais a amarelo, municipais a verde.
+- A tua posição por GPS, velocímetro e direção.
+- Pesquisa de destinos, rota com tempo de viagem e hora de chegada, e indicações curva a curva. A rota é recalculada se te desviares.
+- Alertas da comunidade (polícia, acidente, obras, piso mau): aparecem no mapa em tempo real e a rota mostra quantos há pelo caminho.
+- Perfil com garagem e badges (AMG, M, RS, GTI, Type R, STI e outros). As badges são emblemas de texto próprios da StreetMaps, não os logótipos oficiais das marcas.
+- Eventos e encontros no mapa, com confirmação de presença.
+
 ## Modos
 
 - **Modo demo** (sem configuração): mapa real e o teu GPS, com condutores simulados à tua volta. Perfil, eventos e alertas ficam guardados só no teu telemóvel.
@@ -36,12 +45,13 @@ A chave `anon` é pública por natureza; quem protege os dados são as regras de
 ## Tecnologia
 
 - Mapa: [MapLibre GL JS](https://maplibre.org) com mapas do [OpenFreeMap](https://openfreemap.org) (dados © OpenStreetMap). Estradas por cor: autoestradas a azul, nacionais a amarelo, municipais a verde.
+- Pesquisa: [Photon](https://photon.komoot.io) (OpenStreetMap). Rotas: servidor público de demonstração do [OSRM](https://project-osrm.org), sem trânsito em tempo real. Para muitos utilizadores convém trocar por um serviço próprio ou pago (por exemplo OpenRouteService, GraphHopper ou Mapbox) em `config.js` (`geocoderUrl`, `routerUrl`).
 - Tempo real, contas e base de dados: [Supabase](https://supabase.com).
 - Sem passo de build: HTML, CSS e JavaScript simples.
 
 ## Próximos passos
 
-- Pesquisa de destinos e navegação curva a curva.
+- Indicações por voz e trânsito em tempo real.
 - Conta com email para não perder o perfil ao mudar de telemóvel.
 - Amigos e convites para eventos.
 - App nativa (React Native) para partilhar a posição em segundo plano.

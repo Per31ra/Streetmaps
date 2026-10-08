@@ -7,6 +7,8 @@ const CFG = Object.assign({
   fallbackStyle: "https://tiles.openfreemap.org/styles/positron",
   shareEverySeconds: 3,
   homeRadiusMeters: 500,
+  geocoderUrl: "https://photon.komoot.io/api/",
+  routerUrl: "https://router.project-osrm.org/route/v1/driving/",
 }, window.STREETMAPS_CONFIG || {});
 
 const $ = id => document.getElementById(id);
@@ -31,6 +33,30 @@ function bearing(a, b) {
 function fmtDist(m) { return m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(1) + " km"; }
 function fmtWhen(iso) { const d = new Date(iso); return isNaN(d) ? "Data por marcar" : d.toLocaleString("pt-PT", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); }
 let toastT; function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2800); }
+
+// Fan badges: original text emblems in StreetMaps colours (not the manufacturers' official logos)
+const BADGES = [
+  { id: "amg", label: "AMG", bg: "linear-gradient(135deg,#d9dde3,#6b717c)" },
+  { id: "m", label: "M", bg: "linear-gradient(135deg,#2f86ff,#13306b)" },
+  { id: "rs", label: "RS", bg: "linear-gradient(135deg,#ff3b3b,#7a0f0f)" },
+  { id: "gti", label: "GTI", bg: "linear-gradient(135deg,#ff3b5c,#1b1b1f)" },
+  { id: "typer", label: "TYPE R", bg: "linear-gradient(135deg,#ff2d2d,#ffffff 160%)" },
+  { id: "sti", label: "STI", bg: "linear-gradient(135deg,#ff5ac8,#3a1a6b)" },
+  { id: "nismo", label: "NISMO", bg: "linear-gradient(135deg,#e0e6f2,#c0102a)" },
+  { id: "trd", label: "TRD", bg: "linear-gradient(135deg,#ff6a1a,#5a1c00)" },
+  { id: "cupra", label: "CUPRA", bg: "linear-gradient(135deg,#c9864a,#2a2a2a)" },
+  { id: "st", label: "ST", bg: "linear-gradient(135deg,#4f8cff,#0b1a3a)" },
+  { id: "mugen", label: "MUGEN", bg: "linear-gradient(135deg,#ffd23d,#a10f0f)" },
+  { id: "evo", label: "EVO", bg: "linear-gradient(135deg,#ff4d5e,#2b2b2b)" },
+  { id: "jdm", label: "JDM", bg: "linear-gradient(135deg,#ffffff,#d6001c 70%)" },
+  { id: "stance", label: "STANCE", bg: "linear-gradient(135deg,#9d7bff,#ff5ac8)" },
+  { id: "drift", label: "DRIFT", bg: "linear-gradient(135deg,#7ee0a0,#0b4325)" },
+  { id: "classic", label: "CLÁSSICO", bg: "linear-gradient(135deg,#ffc23d,#5a3d00)" },
+];
+function badgesHtml(ids) {
+  const list = (ids || []).map(id => BADGES.find(b => b.id === id)).filter(Boolean);
+  return list.length ? `<div class="badges">${list.map(b => `<span class="bdg" style="background:${b.bg}">${b.label}</span>`).join("")}</div>` : "";
+}
 
 // ---------------- state ----------------
 const LISBOA = { lat: 38.7223, lng: -9.1393 };
@@ -106,20 +132,20 @@ function supabaseBackend() {
 
 function demoBackend() {
   const BOTS = [
-    ["Rui_EK9","Honda Civic Type R EK9","Margem Sul Tuners",185,["B16B","Coilovers BC"]],
+    ["Rui_EK9","Honda Civic Type R EK9","Margem Sul Tuners",185,["B16B","Coilovers BC"],["typer","mugen","jdm"]],
     ["Inês.MX5","Mazda MX-5 NA","Stance Lisboa",130,["Rebaixada","Enkei 15\""]],
-    ["TiagoE36","BMW 328i E36","Drift Lab PT",230,["Diferencial soldado","Bucket Bride"]],
+    ["TiagoE36","BMW 328i E36","Drift Lab PT",230,["Diferencial soldado","Bucket Bride"],["m","drift"]],
     ["Marta_S14","Nissan Silvia S14","Drift Lab PT",310,["SR20DET","Turbo GT28"]],
     ["Zé205","Peugeot 205 GTI 1.9","Clássicos da Linha",128,["Escape Devil","Bilstein"]],
-    ["Gonçalo_GC8","Subaru Impreza WRX GC8","Rally Spirit",280,["Stage 2","Intercooler frontal"]],
+    ["Gonçalo_GC8","Subaru Impreza WRX GC8","Rally Spirit",280,["Stage 2","Intercooler frontal"],["sti"]],
     ["Ana86","Toyota GT86","Stance Lisboa",220,["Air lift","Rocket Bunny"]],
-    ["CupraNuno","Seat Leon Cupra R","VAG Nation PT",330,["Stage 2+","Downpipe"]],
+    ["CupraNuno","Seat Leon Cupra R","VAG Nation PT",330,["Stage 2+","Downpipe"],["cupra"]],
     ["Kika_Supra","Toyota Supra MK4","JDM Porto",450,["2JZ single turbo","Volk TE37"]],
-    ["Pedro_Mk2","VW Golf GTI Mk2","VAG Nation PT",140,["16V","BBS RS"]],
+    ["Pedro_Mk2","VW Golf GTI Mk2","VAG Nation PT",140,["16V","BBS RS"],["gti","classic"]],
   ];
   let bots = [], cbDriver = null;
   function seedBots(center) {
-    bots = BOTS.map((b, i) => ({ id: "demo-" + i, nick: b[0], car: b[1], crew: b[2], hp: b[3], mods: b[4],
+    bots = BOTS.map((b, i) => ({ id: "demo-" + i, nick: b[0], car: b[1], crew: b[2], hp: b[3], mods: b[4], badges: b[5] || [],
       lat: center.lat + (Math.random() - .5) * .04, lng: center.lng + (Math.random() - .5) * .05,
       heading: Math.random() * 360, v: 8 + Math.random() * 6 }));
   }
@@ -135,10 +161,20 @@ function demoBackend() {
     }
   }, 2000);
   const key = k => "demo:" + k;
+  // a simulated driver reports something every so often, so live alerts can be seen in demo mode
+  let cbChange = null;
+  setInterval(() => {
+    if (!bots.length) return;
+    const b = bots[Math.floor(Math.random() * bots.length)], types = ["police", "crash", "works", "road"];
+    const all = store.get(key("reports"), []);
+    all.push({ id: "r" + Date.now(), type: types[Math.floor(Math.random() * 4)], lat: b.lat, lng: b.lng, created_at: new Date().toISOString(), created_by: b.id, by: b.nick });
+    store.set(key("reports"), all.slice(-40));
+    cbChange?.("reports");
+  }, 45000);
   return {
     mode: "demo",
     async init() { let id = store.get("demo:uid"); if (!id) { id = "me-" + Math.random().toString(36).slice(2); store.set("demo:uid", id); } return id; },
-    async getProfiles() { const mine = store.get(key("profile")); return [...BOTS.map((b, i) => ({ id: "demo-" + i, nick: b[0], car: b[1], crew: b[2], hp: b[3], mods: b[4] })), ...(mine ? [mine] : [])]; },
+    async getProfiles() { const mine = store.get(key("profile")); return [...BOTS.map((b, i) => ({ id: "demo-" + i, nick: b[0], car: b[1], crew: b[2], hp: b[3], mods: b[4], badges: b[5] || [] })), ...(mine ? [mine] : [])]; },
     async saveProfile(p) { store.set(key("profile"), { id: S.uid, ...p }); },
     async getEvents() { return store.get(key("events"), []); },
     async createEvent(e) { const all = store.get(key("events"), []); all.push({ id: "e" + Date.now(), ...e, created_by: S.uid, going: [] }); all.sort((a, b) => a.starts_at.localeCompare(b.starts_at)); store.set(key("events"), all); },
@@ -146,7 +182,7 @@ function demoBackend() {
     async setRsvp(id, on) { const all = store.get(key("events"), []); const e = all.find(x => x.id === id); if (e) { e.going = (e.going || []).filter(u => u !== S.uid); if (on) e.going.push(S.uid); } store.set(key("events"), all); },
     async getReports() { return store.get(key("reports"), []).filter(r => Date.now() - new Date(r.created_at) < 2 * 3600e3); },
     async createReport(r) { const all = store.get(key("reports"), []); all.push({ id: "r" + Date.now(), ...r, created_at: new Date().toISOString(), created_by: S.uid }); store.set(key("reports"), all); },
-    onChanges() {},
+    onChanges(cb) { cbChange = cb; },
     onDriver(cb) { cbDriver = cb; },
     sendPosition() {},
   };
@@ -273,6 +309,7 @@ function onFix(p) {
   if (first) { meMarker.addTo(map); map.jumpTo({ center: [fix.lng, fix.lat], zoom: 15.5 }); }
   else if (S.follow) map.easeTo({ center: [fix.lng, fix.lat], bearing: S.speedKmh > 8 && S.heading != null ? S.heading : map.getBearing(), duration: 900 });
   renderList();
+  navTick();
 }
 
 // ---------------- sharing my position ----------------
@@ -282,7 +319,7 @@ setInterval(() => {
   if (S.ghost || insideHome()) { B.sendPosition({ id: S.uid, gone: true }); return; }
   const p = S.profile || {};
   // speed is deliberately not shared
-  B.sendPosition({ id: S.uid, nick: p.nick || "Anónimo", car: p.car || "", crew: p.crew || "", lat: +S.me.lat.toFixed(5), lng: +S.me.lng.toFixed(5), heading: Math.round(S.heading || 0) });
+  B.sendPosition({ id: S.uid, nick: p.nick || "Anónimo", car: p.car || "", crew: p.crew || "", badges: p.badges || [], lat: +S.me.lat.toFixed(5), lng: +S.me.lng.toFixed(5), heading: Math.round(S.heading || 0) });
 }, CFG.shareEverySeconds * 1000);
 
 function onDriver(d) {
@@ -333,6 +370,7 @@ function showDriverCard(id) {
   const card = $("card"); card.className = "card"; card.hidden = false;
   card.innerHTML = `<button class="x" aria-label="Fechar">×</button>
     <div><div class="crew" style="color:${crewColor(p.crew)}">${esc(p.crew || "Sem crew")}</div><h3>${esc(p.nick || "Anónimo")}</h3><div class="car">${esc(p.car || "Carro por definir")}${p.hp ? " · " + esc(p.hp) + " cv" : ""}</div></div>
+    ${badgesHtml(p.badges)}
     ${(p.mods || []).length ? `<div class="mods">${p.mods.map(m => `<span>${esc(m)}</span>`).join("")}</div>` : ""}
     <div class="hint">A ${fmtDist(distM(S.me || LISBOA, d))} de ti</div>`;
   card.querySelector(".x").onclick = () => card.hidden = true;
@@ -452,13 +490,24 @@ $("evForm").addEventListener("submit", async e => {
 // ---------------- reports ----------------
 const RNAME = { police: "Polícia", crash: "Acidente", works: "Obras", road: "Piso mau" };
 const RLAB = { police: "P", crash: "!", works: "W", road: "~" };
+const seenReports = new Set(); let reportsPrimed = false;
 async function loadReports() {
   try { S.reports = await B.getReports(); } catch (e) { console.warn(e); }
+  for (const r of S.reports) {
+    if (seenReports.has(r.id)) continue;
+    seenReports.add(r.id);
+    if (!reportsPrimed || r.created_by === S.uid || !RNAME[r.type]) continue;
+    const ref = S.me || { lat: map.getCenter().lat, lng: map.getCenter().lng };
+    const onRoute = R.route && distToRoute(r) < 120, d = distM(ref, r);
+    if (onRoute || d < 5000) toast(`Novo alerta${onRoute ? " no teu percurso" : ""}: ${RNAME[r.type]} a ${fmtDist(d)}`);
+  }
+  reportsPrimed = true;
+  renderRouteAlerts();
   for (const [id, m] of reportMarkers) if (!S.reports.find(r => r.id === id)) { m.remove(); reportMarkers.delete(id); }
   for (const r of S.reports) {
     if (reportMarkers.has(r.id) || !RNAME[r.type]) continue;
     const el = document.createElement("div"); el.className = "rmark r-" + r.type; el.innerHTML = `<span>${RLAB[r.type]}</span>`;
-    el.title = RNAME[r.type] + " · " + new Date(r.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+    el.title = RNAME[r.type] + " · " + new Date(r.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) + (r.by ? " · " + r.by : "");
     reportMarkers.set(r.id, new maplibregl.Marker({ element: el }).setLngLat([r.lng, r.lat]).addTo(map));
   }
 }
@@ -472,8 +521,21 @@ $("menu").addEventListener("click", async e => {
 });
 
 // ---------------- profile ----------------
+let pickedBadges = [];
+function renderBadgePick() {
+  $("badgePick").innerHTML = BADGES.map(b => `<button type="button" data-b="${b.id}" aria-pressed="${pickedBadges.includes(b.id)}" aria-label="${b.label}"><span class="bdg" style="background:${b.bg}">${b.label}</span></button>`).join("");
+}
+$("badgePick").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const id = b.dataset.b;
+  if (pickedBadges.includes(id)) pickedBadges = pickedBadges.filter(x => x !== id);
+  else if (pickedBadges.length >= 4) { toast("Podes escolher até 4 badges"); return; }
+  else pickedBadges.push(id);
+  renderBadgePick();
+});
 function fillProfile() {
   const p = S.profile || {};
+  pickedBadges = [...(p.badges || [])]; renderBadgePick();
   $("pNick").value = p.nick || ""; $("pCrew").value = p.crew || ""; $("pCar").value = p.car || ""; $("pHp").value = p.hp || ""; $("pMods").value = (p.mods || []).join(", ");
   meEl.querySelector(".lbl").textContent = (p.nick || "Tu").toUpperCase();
 }
@@ -486,21 +548,179 @@ async function loadProfiles() {
 function renderPeople() {
   const el = $("people");
   if (!S.profiles.length) { el.innerHTML = `<div class="empty">Ainda ninguém criou perfil. Sê o primeiro.</div>`; return; }
-  el.innerHTML = S.profiles.map(p => `<div class="person${p.id === S.uid ? " me" : ""}"><b>${esc(p.nick)}</b><span>${esc(p.car || "Carro por definir")}${p.hp ? " · " + esc(p.hp) + " cv" : ""}</span><span>${esc(p.crew || "Sem crew")}</span></div>`).join("");
+  el.innerHTML = S.profiles.map(p => `<div class="person${p.id === S.uid ? " me" : ""}"><b>${esc(p.nick)}</b><span>${esc(p.car || "Carro por definir")}${p.hp ? " · " + esc(p.hp) + " cv" : ""}</span><span>${esc(p.crew || "Sem crew")}</span>${badgesHtml(p.badges)}</div>`).join("");
 }
 $("pForm").addEventListener("submit", async e => {
   e.preventDefault(); const msg = $("pMsg");
   const nick = $("pNick").value.trim(); if (!nick) { msg.textContent = "Escolhe uma alcunha."; $("pNick").focus(); return; }
-  const p = { nick, crew: $("pCrew").value.trim(), car: $("pCar").value.trim(), hp: Number($("pHp").value) || null, mods: $("pMods").value.split(",").map(s => s.trim()).filter(Boolean).slice(0, 12) };
+  const p = { nick, crew: $("pCrew").value.trim(), car: $("pCar").value.trim(), hp: Number($("pHp").value) || null, mods: $("pMods").value.split(",").map(s => s.trim()).filter(Boolean).slice(0, 12), badges: pickedBadges.slice(0, 4) };
   $("pSave").disabled = true; msg.textContent = "A guardar…";
   try { await B.saveProfile(p); S.profile = { id: S.uid, ...p }; store.set("profile", S.profile); fillProfile(); msg.textContent = "Perfil guardado."; await loadProfiles(); }
   catch (err) { console.warn(err); msg.textContent = err?.code === "23505" ? "Essa alcunha já está em uso. Escolhe outra." : "Não foi possível guardar. Tenta outra vez."; }
   $("pSave").disabled = false;
 });
 
+// ---------------- search & routing ----------------
+const R = { route: null, steps: [], step: 1, dest: null, nav: false, offCount: 0, lastReroute: 0 };
+let searchAbort = null, searchT = null;
+async function geocode(q) {
+  searchAbort?.abort(); searchAbort = new AbortController();
+  const ref = S.me || { lat: map.getCenter().lat, lng: map.getCenter().lng };
+  const url = `${CFG.geocoderUrl}?q=${encodeURIComponent(q)}&limit=7&lat=${ref.lat.toFixed(4)}&lon=${ref.lng.toFixed(4)}`;
+  const res = await fetch(url, { signal: searchAbort.signal });
+  if (!res.ok) throw new Error("geocoder " + res.status);
+  const j = await res.json();
+  return (j.features || []).map(f => {
+    const p = f.properties || {};
+    const title = p.name || [p.street, p.housenumber].filter(Boolean).join(" ") || p.city || "Local sem nome";
+    const sub = [p.name && p.street ? [p.street, p.housenumber].filter(Boolean).join(" ") : "", p.city || p.county, p.country].filter(Boolean).join(", ");
+    return { title, sub, lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] };
+  });
+}
+function renderResults(list, msg) {
+  const el = $("sResults");
+  if (msg) { el.innerHTML = `<div class="empty">${esc(msg)}</div>`; return; }
+  const ref = S.me || null;
+  el.innerHTML = list.map((r, i) => `<button data-i="${i}"><b>${esc(r.title)}</b><span>${esc(r.sub)}${ref ? " · " + fmtDist(distM(ref, r)) : ""}</span></button>`).join("");
+  el._list = list;
+}
+$("sInput").addEventListener("input", () => {
+  clearTimeout(searchT);
+  const q = $("sInput").value.trim();
+  if (q.length < 3) { $("sResults").innerHTML = ""; return; }
+  searchT = setTimeout(async () => {
+    try { const list = await geocode(q); renderResults(list, list.length ? "" : "Não encontrei nada com esse nome."); }
+    catch (e) { if (e.name !== "AbortError") renderResults([], "A pesquisa não respondeu. Verifica a ligação e tenta outra vez."); }
+  }, 450);
+});
+$("sForm").addEventListener("submit", e => { e.preventDefault(); $("sInput").dispatchEvent(new Event("input")); });
+$("sResults").addEventListener("click", e => {
+  const b = e.target.closest("button[data-i]"); if (!b) return;
+  const d = $("sResults")._list[+b.dataset.i];
+  $("search").hidden = true;
+  planRoute(d);
+});
+$("searchBtn").onclick = () => { $("search").hidden = false; setTimeout(() => $("sInput").focus(), 50); };
+
+async function fetchRoute(from, to) {
+  const url = `${CFG.routerUrl}${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=true`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("router " + res.status);
+  const j = await res.json();
+  if (j.code !== "Ok" || !j.routes?.length) throw new Error("no route");
+  return j.routes[0];
+}
+async function planRoute(dest) {
+  const from = S.me || { lat: map.getCenter().lat, lng: map.getCenter().lng };
+  R.dest = dest;
+  $("route").hidden = false; $("route").classList.remove("nav"); $("navLine").hidden = true;
+  $("rTime").textContent = "A calcular…"; $("rMeta").textContent = ""; $("rDest").textContent = dest.title; $("rAlerts").innerHTML = "";
+  try {
+    setRoute(await fetchRoute(from, dest));
+    fitRoute();
+  } catch (e) { console.warn(e); $("rTime").textContent = "Sem rota"; $("rMeta").textContent = "Não consegui calcular o caminho até aí."; }
+}
+function setRoute(route) {
+  R.route = route; R.steps = route.legs?.[0]?.steps || []; R.step = Math.min(1, R.steps.length - 1); R.offCount = 0;
+  const data = { type: "Feature", geometry: route.geometry, properties: {} };
+  if (map.getSource("route")) map.getSource("route").setData(data);
+  else {
+    map.addSource("route", { type: "geojson", data });
+    map.addLayer({ id: "route-glow", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ff6a1a", "line-width": 16, "line-opacity": 0.25, "line-blur": 6 } });
+    map.addLayer({ id: "route-line", type: "line", source: "route", layout: { "line-cap": "round", "line-join": "round" }, paint: { "line-color": "#ff8a3d", "line-width": 6 } });
+  }
+  updateEta(route.distance, route.duration);
+  renderRouteAlerts();
+}
+function fitRoute() {
+  const c = R.route.geometry.coordinates; const b = new maplibregl.LngLatBounds(c[0], c[0]);
+  for (const p of c) b.extend(p);
+  S.follow = false;
+  map.fitBounds(b, { padding: { top: 220, bottom: 200, left: 40, right: innerWidth >= 760 ? 360 : 40 }, pitch: 0, bearing: 0, duration: 800 });
+}
+function fmtDur(s) { const m = Math.round(s / 60); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0"); }
+function updateEta(dist, dur) {
+  $("rTime").textContent = fmtDur(dur);
+  const arrive = new Date(Date.now() + dur * 1000).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+  $("rMeta").textContent = `${fmtDist(dist)} · chegada às ${arrive}`;
+}
+// distance from a point to the route polyline (equirectangular, good enough at city scale)
+function distToRoute(p) {
+  const c = R.route?.geometry?.coordinates; if (!c) return Infinity;
+  const kx = 111320 * Math.cos(p.lat * Math.PI / 180), ky = 110540;
+  let best = Infinity;
+  for (let i = 1; i < c.length; i++) {
+    const ax = (c[i - 1][0] - p.lng) * kx, ay = (c[i - 1][1] - p.lat) * ky, bx = (c[i][0] - p.lng) * kx, by = (c[i][1] - p.lat) * ky;
+    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+    best = Math.min(best, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return best;
+}
+function renderRouteAlerts() {
+  if (!R.route) return;
+  const on = S.reports.filter(r => RNAME[r.type] && distToRoute(r) < 120);
+  const counts = {}; on.forEach(r => counts[r.type] = (counts[r.type] || 0) + 1);
+  $("rAlerts").innerHTML = on.length
+    ? Object.entries(counts).map(([t, n]) => `<span><i class="r-${t}"></i>${n} ${RNAME[t].toLowerCase()}</span>`).join("")
+    : `<span class="ok">Sem alertas no percurso</span>`;
+}
+const MOD = { left: "à esquerda", right: "à direita", "slight left": "ligeiramente à esquerda", "slight right": "ligeiramente à direita", "sharp left": "bem à esquerda", "sharp right": "bem à direita", straight: "em frente", uturn: "inverte a marcha" };
+const ARROW = { left: "←", right: "→", "slight left": "↖", "slight right": "↗", "sharp left": "↙", "sharp right": "↘", straight: "↑", uturn: "↶" };
+function instruction(st) {
+  const m = st.maneuver || {}, mod = MOD[m.modifier] || "", name = st.name || st.ref || "";
+  const onto = name ? " para " + name : "";
+  switch (m.type) {
+    case "arrive": return { arrow: "◎", text: "Chegada ao destino" };
+    case "roundabout": case "rotary": case "roundabout turn": return { arrow: "↻", text: `Na rotunda, sai na ${m.exit || 1}.ª saída${onto}` };
+    case "merge": return { arrow: ARROW[m.modifier] || "↑", text: "Entra" + onto };
+    case "on ramp": return { arrow: ARROW[m.modifier] || "↗", text: "Entra na via" + onto };
+    case "off ramp": return { arrow: ARROW[m.modifier] || "↗", text: "Sai" + onto };
+    case "fork": return { arrow: ARROW[m.modifier] || "↑", text: `Mantém-te ${mod || "em frente"}${onto}` };
+    case "end of road": return { arrow: ARROW[m.modifier] || "↑", text: `No fim da estrada, vira ${mod}${onto}` };
+    case "continue": case "new name": return { arrow: "↑", text: "Continua" + (name ? " na " + name : "") };
+    default: return { arrow: ARROW[m.modifier] || "↑", text: (m.modifier === "uturn" ? "Inverte a marcha" : m.modifier === "straight" ? "Segue em frente" : `Vira ${mod}`) + onto };
+  }
+}
+function startNav() {
+  if (!R.route) return;
+  if (!S.me) { toast("Ativa a localização para seguires a rota"); return; }
+  R.nav = true; S.follow = true;
+  $("route").classList.add("nav"); $("navLine").hidden = false;
+  map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 17, pitch: 60, duration: 800 });
+  navTick();
+}
+function endNav() {
+  R.nav = false; R.route = null; R.steps = []; $("route").hidden = true;
+  if (map.getSource("route")) map.getSource("route").setData({ type: "FeatureCollection", features: [] });
+}
+async function navTick() {
+  if (!R.nav || !R.route || !S.me) return;
+  // advance past maneuvers we've reached
+  while (R.step < R.steps.length - 1) {
+    const loc = R.steps[R.step].maneuver.location;
+    if (distM(S.me, { lng: loc[0], lat: loc[1] }) < 25) R.step++; else break;
+  }
+  const st = R.steps[R.step]; if (!st) return;
+  const loc = st.maneuver.location, toNext = distM(S.me, { lng: loc[0], lat: loc[1] });
+  if (st.maneuver.type === "arrive" && toNext < 30) { toast("Chegaste ao destino"); endNav(); return; }
+  const ins = instruction(st);
+  $("navArrow").textContent = ins.arrow; $("navDist").textContent = fmtDist(toNext); $("navStreet").textContent = ins.text;
+  const rest = R.steps.slice(R.step).reduce((a, s) => a + s.distance, 0) + toNext;
+  updateEta(rest, R.route.duration * rest / Math.max(1, R.route.distance));
+  // off route: recalculate (at most every 15 s)
+  if (distToRoute(S.me) > 60) R.offCount++; else R.offCount = 0;
+  if (R.offCount >= 2 && Date.now() - R.lastReroute > 15000) {
+    R.lastReroute = Date.now(); R.offCount = 0; toast("A recalcular a rota…");
+    try { setRoute(await fetchRoute(S.me, R.dest)); } catch (e) { console.warn(e); }
+  }
+}
+$("rStart").onclick = startNav;
+$("rClose").onclick = endNav;
+
 // ---------------- controls ----------------
 document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => $(b.dataset.close).hidden = true);
-["events", "profile"].forEach(id => $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; }));
+["events", "profile", "search"].forEach(id => $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; }));
 $("openEvents").onclick = () => { $("events").hidden = false; loadEvents(); };
 $("openProfile").onclick = () => { $("profile").hidden = false; fillProfile(); loadProfiles(); };
 $("recenter").onclick = () => { S.follow = true; if (S.me) map.easeTo({ center: [S.me.lng, S.me.lat], zoom: Math.max(map.getZoom(), 15), pitch: 50 }); else toast("Ainda sem localização"); };
@@ -532,7 +752,7 @@ function sheetH() { document.documentElement.style.setProperty("--sheet", (inner
 $("sheetHandle").onclick = () => { panel.classList.toggle("collapsed"); sheetH(); };
 addEventListener("resize", sheetH);
 if (innerWidth >= 760) panel.classList.remove("collapsed");
-document.addEventListener("keydown", e => { if (e.key === "Escape") { ["events", "profile", "menu"].forEach(i => $(i).hidden = true); $("card").hidden = true; S.pick = false; } });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { ["events", "profile", "menu", "search"].forEach(i => $(i).hidden = true); $("card").hidden = true; S.pick = false; } });
 
 $("start").onclick = () => { $("welcome").hidden = true; store.set("welcomed", true); startGps(); };
 $("startNoGps").onclick = () => { $("welcome").hidden = true; gpsMsg("Sem localização: estás só a ver o mapa."); };

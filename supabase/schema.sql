@@ -9,6 +9,7 @@ create table if not exists public.profiles (
   car text check (char_length(car) <= 50),
   hp integer check (hp between 0 and 2000),
   mods text[] default '{}',
+  badges text[] default '{}',
   updated_at timestamptz default now()
 );
 create unique index if not exists profiles_nick_unique on public.profiles (lower(nick));
@@ -64,3 +65,6 @@ create policy "reports create" on public.reports for insert to authenticated wit
 
 -- Atualizações em tempo real para eventos, presenças, alertas e perfis.
 alter publication supabase_realtime add table public.events, public.rsvps, public.reports, public.profiles;
+
+-- v2: badges no perfil (para bases de dados criadas antes desta versão)
+alter table public.profiles add column if not exists badges text[] default '{}';
