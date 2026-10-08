@@ -12,7 +12,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800;900&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Share+Tech+Mono&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800;900&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=Share+Tech+Mono&family=Yellowtail&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -154,6 +154,12 @@
         <div class="field"><label for="pMods">Modificações</label><input id="pMods" maxlength="200" placeholder="Separadas por vírgulas: coilovers, escape, jantes 17&quot;"></div>
         <div class="formrow"><button type="submit" class="btn hot" id="pSave">Guardar perfil</button><span class="hint" id="pMsg"></span></div>
       </form>
+      <section class="themesec"><h3>Tema</h3>
+        <div class="themes" role="group" aria-label="Tema da aplicação">
+          <button type="button" class="themecard street" data-theme-pick="street" aria-pressed="true"><span class="sw"></span><b>Street</b><small>Néon azul-noite</small></button>
+          <button type="button" class="themecard vice" data-theme-pick="vice" aria-pressed="false"><span class="sw"></span><b>Vice</b><small>Pôr do sol em Miami</small></button>
+        </div>
+      </section>
       <section><h3>Comunidade</h3><div class="people" id="people"></div></section>
     </div>
   </div>

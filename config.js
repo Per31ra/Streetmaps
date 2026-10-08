@@ -9,4 +9,6 @@ window.STREETMAPS_CONFIG = {
   // Trânsito em tempo real e rotas que o evitam: chave gratuita em developer.tomtom.com
   // (restringe a chave ao teu domínio, por exemplo per31ra.github.io, no painel da TomTom).
   tomtomKey: "EU3rWeckS99pA7IIIWaOBapk0vyFmm4x",
+  // false: o trânsito só é usado para escolher a rota mais rápida, sem aparecer no ecrã
+  showTraffic: false,
 };

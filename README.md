@@ -12,6 +12,8 @@ O mapa ao vivo da comunidade tuning: mapa real do mundo inteiro com visual néon
 - Alertas da comunidade (polícia, acidente, obras, piso mau): aparecem no mapa em tempo real e a rota mostra quantos há pelo caminho.
 - Perfil com garagem e badges (AMG, M, RS, GTI, Type R, STI e outros). As badges são emblemas de texto próprios da StreetMaps, não os logótipos oficiais das marcas.
 - Eventos e encontros no mapa, com confirmação de presença.
+- Câmara em 3.ª pessoa durante a rota, com prédios em 3D.
+- Dois temas, escolhidos no Perfil: **Street** (néon azul-noite) e **Vice** (pôr do sol, rosa e turquesa, inspirado em Miami; sem logótipos nem fontes de jogos).
 
 ## Modos
 
@@ -37,10 +39,9 @@ A chave `anon` é pública por natureza; quem protege os dados são as regras de
 
 ## Trânsito em tempo real (TomTom, gratuito)
 
-Sem chave, as rotas mostram alternativas mas os tempos não contam com o trânsito. Com uma chave da TomTom a app passa a:
-- calcular as rotas com o trânsito do momento e mostrar quanto tempo se perde em cada uma;
-- sugerir a rota com **menos trânsito**, mesmo que seja mais longa;
-- pintar os engarrafamentos na rota e mostrar o trânsito no mapa (botão "Trânsito").
+Sem chave, as rotas mostram alternativas mas os tempos não contam com o trânsito. Com uma chave da TomTom, a app usa o trânsito do momento **só no cálculo**: escolhe por defeito a rota mais rápida (mesmo que seja mais longa) sem mostrar o trânsito no ecrã. Se a TomTom falhar ou o limite diário acabar, a app usa as rotas gratuitas sem trânsito.
+
+Para mostrar também o trânsito (engarrafamentos na rota, tempo perdido e o botão "Trânsito" no mapa), põe `showTraffic: true` em `config.js`. Isso gasta mais pedidos do plano gratuito.
 
 Como ativar:
 1. Cria uma conta em developer.tomtom.com e copia a chave da API (o plano gratuito dá vários milhares de pedidos por dia).

@@ -283,3 +283,38 @@ button:focus-visible{outline:2px solid var(--heat);outline-offset:2px}
 .opt.sel{border-color:var(--heat);background:rgba(255,106,26,.12)}
 .route.nav .opts{display:none}
 .fab.on{color:#2fe07a;box-shadow:0 0 0 1.5px rgba(47,224,122,.6),0 6px 20px rgba(0,0,0,.45)}
+
+/* ---------- v5: themes, third-person navigation ---------- */
+.themes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.themecard{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px;border-radius:16px;border:1.5px solid var(--hair);background:rgba(255,255,255,.04);font-family:var(--ios);text-align:left}
+.themecard[aria-pressed="true"]{border-color:var(--heat)}
+.themecard .sw{width:100%;height:46px;border-radius:10px;margin-bottom:6px}
+.themecard.street .sw{background:linear-gradient(135deg,#131b2c 40%,#2f86ff 41%,#2f86ff 46%,#131b2c 47%,#131b2c 70%,#ff6a1a 71%)}
+.themecard.vice .sw{background:linear-gradient(180deg,#ff8a3d 0%,#ff2e88 45%,#7b2ff7 75%,#241238 100%)}
+.themecard b{font-size:16px}
+.themecard small{font-size:12px;color:var(--mute)}
+
+/* Vice: original sunset/Miami palette (no game logos or fonts) */
+:root[data-theme="vice"]{--night:#241238;--heat:#ff2e88;--neon:#2de2e6;--gold:#ffb84a;--ink:#fff1f8;--mute:#c9a6d6;--line:rgba(45,226,230,.25);--frost:rgba(52,22,70,.55);--hair:rgba(255,190,230,.2);--glass:rgba(36,18,56,.86)}
+:root[data-theme="vice"] body{background:#241238}
+:root[data-theme="vice"] .brand{font-family:"Yellowtail",var(--f-display);text-transform:none;font-weight:400;font-size:34px;background:linear-gradient(180deg,#ffd36b 10%,#ff8a3d 45%,#ff2e88 80%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 10px rgba(255,46,136,.55))}
+:root[data-theme="vice"] .brand b{color:inherit}
+:root[data-theme="vice"] .brand small{-webkit-text-fill-color:var(--neon);color:var(--neon);font-family:var(--f-mono)}
+:root[data-theme="vice"] .fab.hot,:root[data-theme="vice"] .btn.hot{background:linear-gradient(160deg,#ff8a3d,#ff2e88);color:#fff}
+:root[data-theme="vice"] .navline{background:linear-gradient(100deg,#ff8a3d,#ff2e88 60%,#b03cff)}
+:root[data-theme="vice"] .eta b{color:var(--neon)}
+:root[data-theme="vice"] .speedo .val span{color:var(--neon)}
+:root[data-theme="vice"] .speedo .val b{background:linear-gradient(180deg,#fff 20%,#ff9fd0);-webkit-background-clip:text;background-clip:text}
+:root[data-theme="vice"] .panel,:root[data-theme="vice"] .card,:root[data-theme="vice"] .route{background:rgba(40,16,60,.8)}
+:root[data-theme="vice"] .drawer .sheet{background:rgba(30,12,46,.97)}
+:root[data-theme="vice"] .car-mk.me::before{border-color:rgba(255,46,136,.5)}
+:root[data-theme="vice"] .opt.sel{background:rgba(255,46,136,.14)}
+:root[data-theme="vice"] .chips.seg .chip[aria-pressed="true"]{background:var(--heat)}
+:root[data-theme="vice"] .switch[aria-checked="true"]{background:var(--heat)}
+:root[data-theme="vice"] #app::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:linear-gradient(180deg,rgba(255,138,61,.16),rgba(255,46,136,.06) 30%,transparent 55%)}
+
+/* third-person: bigger car while driving, hide the side list */
+body.navigating .car-mk.me svg{width:44px;height:44px}
+body.navigating .panel{display:none}
+body.navigating .searchbar{display:none}
+body.navigating .route{top:calc(var(--safe-top) + 64px)}
