@@ -22,8 +22,8 @@
   <div class="top">
     <div class="brand">Street<b>Maps</b><small id="modeTag"></small></div>
     <div class="topbtns">
-      <button class="btn" id="openEvents">Eventos</button>
-      <button class="btn" id="openProfile">Perfil</button>
+      <button class="pill" id="openEvents"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg><span>Eventos</span></button>
+      <button class="pill" id="openProfile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg><span>Perfil</span></button>
     </div>
   </div>
 
@@ -34,7 +34,7 @@
     <header>
       <button class="sheet-handle" id="sheetHandle" aria-label="Expandir lista"></button>
       <div class="ph"><h2>Na estrada</h2><span class="live"><i></i><span id="onlineCount">0</span> perto</span></div>
-      <div class="chips" role="group" aria-label="Quem mostrar">
+      <div class="chips seg" role="group" aria-label="Quem mostrar">
         <button class="chip" data-filter="all" aria-pressed="true">Todos</button>
         <button class="chip" data-filter="crew" aria-pressed="false">A minha crew</button>
       </div>
@@ -45,9 +45,10 @@
         <div>Modo fantasma<small>Vês os outros, ninguém te vê</small></div>
         <button class="switch" id="ghost" role="switch" aria-checked="false" aria-label="Modo fantasma"></button>
       </div>
+      <div class="legend" aria-label="Legenda das estradas"><span><i style="background:#2f86ff"></i>Autoestrada</span><span><i style="background:#ffd23d"></i>Nacional</span><span><i style="background:#2fe07a"></i>Municipal</span></div>
       <div class="toggle">
         <div>Zona privada<small id="homeHint">Esconde-te perto de casa (500 m)</small></div>
-        <button class="btn small" id="homeBtn">Definir aqui</button>
+        <button class="pill small" id="homeBtn">Definir aqui</button>
       </div>
     </footer>
   </aside>
@@ -56,12 +57,12 @@
 
   <div class="speedo" aria-hidden="true">
     <canvas id="speedo" width="340" height="340"></canvas>
-    <div class="val"><b id="spd">0</b><span>KM/H</span></div>
+    <div class="val"><b id="spd">0</b><span>KM/H</span><em id="hdg">—</em></div>
   </div>
 
   <div class="tools">
-    <button class="btn hot" id="reportBtn">+ Reportar</button>
-    <button class="btn" id="recenter">Centrar</button>
+    <button class="fab hot" id="reportBtn" aria-label="Reportar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3zM12 10v4M12 17v.5"/></svg><span>Reportar</span></button>
+    <button class="fab" id="recenter" aria-label="Centrar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 3 10.5l7.5 3L14 21l7-18z"/></svg><span>Centrar</span></button>
   </div>
   <div class="menu" id="menu" hidden>
     <button data-r="police"><i class="r-police">P</i>Polícia</button>

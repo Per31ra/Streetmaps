@@ -35,7 +35,7 @@ A chave `anon` é pública por natureza; quem protege os dados são as regras de
 
 ## Tecnologia
 
-- Mapa: [MapLibre GL JS](https://maplibre.org) com mapas do [OpenFreeMap](https://openfreemap.org) (dados © OpenStreetMap), recoloridos em néon.
+- Mapa: [MapLibre GL JS](https://maplibre.org) com mapas do [OpenFreeMap](https://openfreemap.org) (dados © OpenStreetMap). Estradas por cor: autoestradas a azul, nacionais a amarelo, municipais a verde.
 - Tempo real, contas e base de dados: [Supabase](https://supabase.com).
 - Sem passo de build: HTML, CSS e JavaScript simples.
 

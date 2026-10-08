@@ -173,6 +173,18 @@ map.on("error", e => {
 map.on("style.load", neonify);
 map.on("dragstart", () => { S.follow = false; });
 
+// OpenMapTiles road classes: motorway = autoestrada (A), trunk/primary = nacional (IP, IC, EN), secondary/tertiary = municipal (ER, EM)
+const ROAD_COLOR = ["match", ["get", "class"],
+  "motorway", "#2f86ff",
+  ["trunk", "primary"], "#ffd23d",
+  ["secondary", "tertiary"], "#2fe07a",
+  ["minor", "service"], "#33415c",
+  "#232d42"];
+const ROAD_CASING = ["match", ["get", "class"],
+  "motorway", "#0b2a5c",
+  ["trunk", "primary"], "#4d3a07",
+  ["secondary", "tertiary"], "#0b4325",
+  "#0d1320"];
 function neonify() {
   const layers = map.getStyle()?.layers || [];
   const set = (id, prop, val) => { try { map.setPaintProperty(id, prop, val); } catch {} };
@@ -190,9 +202,11 @@ function neonify() {
       if (/water|river|stream|canal/.test(id)) set(l.id, "line-color", "#0d2340");
       else if (/boundary|admin/.test(id)) set(l.id, "line-color", "#2a3550");
       else if (/rail/.test(id)) set(l.id, "line-color", "#232c40");
-      else if (/casing|outline/.test(id)) set(l.id, "line-color", "#1b2a44");
-      else if (/motorway|trunk|primary|highway/.test(id)) set(l.id, "line-color", "#ff8a3d");
-      else if (/road|street|secondary|tertiary|minor|service|transport|path|track|bridge|tunnel/.test(id)) set(l.id, "line-color", "#3fd0ff");
+      else if (l["source-layer"] === "transportation" || /road|street|highway|motorway|trunk|primary|secondary|tertiary|minor|service|path|track|bridge|tunnel/.test(id)) {
+        // autoestradas azul, nacionais amarelo, municipais verde
+        if (/casing|outline/.test(id)) set(l.id, "line-color", ROAD_CASING);
+        else set(l.id, "line-color", ROAD_COLOR);
+      }
     }
     else if (l.type === "symbol") { set(l.id, "text-color", "#aab8d0"); set(l.id, "text-halo-color", "#07090f"); set(l.id, "text-halo-width", 1.2); }
   }
@@ -326,17 +340,31 @@ function showDriverCard(id) {
 
 // ---------------- speedometer ----------------
 const sctx = $("speedo").getContext("2d"); let shown = 0;
+const DIRS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
 function drawSpeedo() {
   shown += (S.speedKmh - shown) * 0.15;
-  const c = sctx, Z = 340, cx = Z / 2, cy = Z / 2, r = 140, a0 = Math.PI * .75, a1 = Math.PI * 2.25, max = 160;
+  const c = sctx, Z = 340, cx = Z / 2, cy = Z / 2, max = 200, SEG = 36;
+  const a0 = Math.PI * .72, a1 = Math.PI * 2.28, lit = Math.min(shown, max) / max * SEG;
   c.clearRect(0, 0, Z, Z);
-  c.lineWidth = 16; c.strokeStyle = "rgba(9,13,22,.85)"; c.beginPath(); c.arc(cx, cy, r, a0, a1); c.stroke();
-  c.strokeStyle = "rgba(63,208,255,.18)"; c.beginPath(); c.arc(cx, cy, r, a0, a1); c.stroke();
-  const g = c.createLinearGradient(0, Z, Z, 0); g.addColorStop(0, "#3fd0ff"); g.addColorStop(1, "#ff6a1a");
-  c.strokeStyle = g; c.shadowColor = "#ff6a1a"; c.shadowBlur = 18; c.beginPath(); c.arc(cx, cy, r, a0, a0 + (a1 - a0) * Math.min(shown, max) / max); c.stroke(); c.shadowBlur = 0;
-  c.strokeStyle = "rgba(233,238,248,.6)"; c.lineWidth = 3; c.fillStyle = "rgba(233,238,248,.55)"; c.font = "600 20px 'Share Tech Mono',monospace"; c.textAlign = "center"; c.textBaseline = "middle";
-  for (let k = 0; k <= max; k += 20) { const a = a0 + (a1 - a0) * k / max; c.beginPath(); c.moveTo(cx + Math.cos(a) * (r - 24), cy + Math.sin(a) * (r - 24)); c.lineTo(cx + Math.cos(a) * (r - 12), cy + Math.sin(a) * (r - 12)); c.stroke(); if (k % 40 === 0) c.fillText(k, cx + Math.cos(a) * (r - 44), cy + Math.sin(a) * (r - 44)); }
+  // dark disc
+  const bg = c.createRadialGradient(cx, cy, 20, cx, cy, 168); bg.addColorStop(0, "rgba(16,20,30,.92)"); bg.addColorStop(1, "rgba(5,7,12,.92)");
+  c.fillStyle = bg; c.beginPath(); c.arc(cx, cy, 166, 0, 7); c.fill();
+  c.strokeStyle = "rgba(255,255,255,.08)"; c.lineWidth = 2; c.stroke();
+  // segmented rev-style arc: blue -> yellow -> red
+  for (let i = 0; i < SEG; i++) {
+    const a = a0 + (a1 - a0) * (i + .1) / SEG, b = a0 + (a1 - a0) * (i + .85) / SEG, f = i / SEG;
+    const col = f < .55 ? "#2f86ff" : f < .8 ? "#ffd23d" : "#ff3b3b";
+    c.strokeStyle = i < lit ? col : "rgba(255,255,255,.08)";
+    c.lineWidth = i < lit ? 20 : 14; c.shadowColor = col; c.shadowBlur = i < lit ? 14 : 0;
+    c.beginPath(); c.arc(cx, cy, 138, a, b); c.stroke();
+  }
+  c.shadowBlur = 0;
+  // scale numbers
+  c.fillStyle = "rgba(233,238,248,.5)"; c.font = "italic 700 19px 'Saira Condensed',sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+  for (let k = 0; k <= max; k += 40) { const a = a0 + (a1 - a0) * k / max; c.fillText(k, cx + Math.cos(a) * 104, cy + Math.sin(a) * 104); }
   $("spd").textContent = Math.round(shown);
+  const h = S.heading;
+  $("hdg").textContent = h == null ? "—" : DIRS[Math.round(h / 45) % 8] + " " + Math.round(h) + "°";
   requestAnimationFrame(drawSpeedo);
 }
 requestAnimationFrame(drawSpeedo);
