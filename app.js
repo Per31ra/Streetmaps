@@ -917,8 +917,8 @@ function routeBearing() {
 function chaseCam(duration) {
   if (!S.me) return;
   const head = S.speedKmh > 5 && S.heading != null ? S.heading : routeBearing();
-  map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 17.6, pitch: 72, bearing: head,
-    padding: { top: Math.round(innerHeight * 0.42), bottom: 0, left: 0, right: 0 }, duration });
+  map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 16.9, pitch: 55, bearing: head,
+    padding: { top: Math.round(innerHeight * 0.32), bottom: 0, left: 0, right: 0 }, duration });
 }
 function startNav() {
   if (!R.route) return;
@@ -975,14 +975,18 @@ function applySat() {
   document.body.classList.toggle("sat", S.sat);
   if (!map.getLayer("sat")) return;
   map.setLayoutProperty("sat", "visibility", S.sat ? "visible" : "none");
-  // over imagery: thinner, slightly see-through roads and no 3D blocks
+  // over imagery: only the painted roads stay; buildings, land and other shapes are hidden
   for (const l of map.getStyle().layers || []) {
-    if (l.type === "line" && !/^route|^home|^raceway/.test(l.id)) try { map.setPaintProperty(l.id, "line-opacity", S.sat ? 0.55 : 1); } catch {}
-    if (l.type === "fill-extrusion") try { map.setLayoutProperty(l.id, "visibility", S.sat ? "none" : "visible"); } catch {}
+    if (/^route|^home|^raceway|^sat$/.test(l.id)) continue;
+    const shape = l.type === "fill" || l.type === "fill-extrusion" || (l.type === "line" && l["source-layer"] !== "transportation");
+    if (!shape) continue;
+    if (!(l.id in satHidden)) satHidden[l.id] = map.getLayoutProperty(l.id, "visibility") || "visible";
+    try { map.setLayoutProperty(l.id, "visibility", S.sat ? "none" : satHidden[l.id]); } catch {}
   }
 }
+const satHidden = {};
 $("satBtn").onclick = () => { S.sat = !S.sat; store.set("sat", S.sat); applySat(); };
-map.on("style.load", applySat);
+map.on("style.load", () => { for (const k in satHidden) delete satHidden[k]; applySat(); });
 
 // ---------------- controls ----------------
 document.querySelectorAll("[data-theme-pick]").forEach(b => b.onclick = () => { S.theme = b.dataset.themePick; store.set("theme", S.theme); applyTheme(); });
