@@ -951,16 +951,26 @@ function chaseCam(duration) {
   map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 18.2, pitch: 55, bearing: head,
     padding: { top: Math.round(innerHeight * 0.38), bottom: 0, left: 0, right: 0 }, duration });
 }
+// keep the screen on while navigating (Screen Wake Lock: Chrome/Android, Safari 16.4+)
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && "wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); }
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { console.warn("wake lock", e); }
+}
+// the lock is dropped when the app goes to the background; take it again on return
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && R.nav) keepAwake(true); });
 function startNav() {
   if (!R.route) return;
   if (!S.me) { toast("Ativa a localização para seguires a rota"); return; }
-  R.nav = true; S.follow = true; drawRoutes(); document.body.classList.add("navigating");
+  R.nav = true; S.follow = true; drawRoutes(); document.body.classList.add("navigating"); keepAwake(true);
   $("route").classList.add("nav"); $("navLine").hidden = false;
   chaseCam(800);
   navTick();
 }
 function endNav() {
-  document.body.classList.remove("navigating");
+  document.body.classList.remove("navigating"); keepAwake(false);
   map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, pitch: 50, duration: 600 });
   R.nav = false; R.route = null; R.steps = []; R.options = []; $("route").hidden = true;
   const empty = { type: "FeatureCollection", features: [] };
