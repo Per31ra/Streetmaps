@@ -917,8 +917,8 @@ function routeBearing() {
 function chaseCam(duration) {
   if (!S.me) return;
   const head = S.speedKmh > 5 && S.heading != null ? S.heading : routeBearing();
-  map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 16.9, pitch: 55, bearing: head,
-    padding: { top: Math.round(innerHeight * 0.32), bottom: 0, left: 0, right: 0 }, duration });
+  map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 18.2, pitch: 55, bearing: head,
+    padding: { top: Math.round(innerHeight * 0.38), bottom: 0, left: 0, right: 0 }, duration });
 }
 function startNav() {
   if (!R.route) return;

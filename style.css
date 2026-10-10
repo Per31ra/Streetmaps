@@ -385,3 +385,19 @@ body.sat .maplibregl-canvas{filter:none}
 }
 body.navigating .musicchip{top:auto;bottom:calc(var(--safe-bottom) + 92px)}
 body.navigating .musicpanel{top:auto;bottom:calc(var(--safe-bottom) + 130px)}
+
+/* v9: compact route header while navigating, so more of the road shows */
+body.navigating .top{display:none}
+body.navigating .route{top:calc(var(--safe-top) + 6px);width:min(340px,calc(100% - 24px));padding:7px 10px;gap:5px;border-radius:16px}
+body.navigating .navline{margin:-7px -10px 0;padding:7px 10px;gap:8px;border-radius:16px 16px 0 0}
+body.navigating .navline .arrow{font-size:24px;width:26px}
+body.navigating .navtxt b{font-size:20px}
+body.navigating .navtxt span{font-size:13px}
+body.navigating .route .routehead{align-items:center}
+body.navigating .route .eta{display:flex;align-items:baseline;gap:8px}
+body.navigating .route.nav .eta b{font-size:17px}
+body.navigating .route .eta span{font-size:12px}
+body.navigating .ralerts{font-size:11px;gap:4px}
+body.navigating .ralerts span{padding:1px 7px}
+body.navigating .musicchip{top:calc(var(--safe-top) + 124px);bottom:auto}
+body.navigating .musicpanel{top:calc(var(--safe-top) + 160px);bottom:auto}
