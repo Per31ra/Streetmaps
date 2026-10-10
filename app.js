@@ -103,6 +103,7 @@ const S = {
   filter: "all",
   theme: store.get("theme", "street"),
   sat: store.get("sat", false),
+  north: store.get("north", false), // true: north stays up; false: the map turns with the driver
   traffic: store.get("traffic", true),
   pick: false,
   pickPos: null,
@@ -399,7 +400,7 @@ function onFix(p) {
   meMarker.setLngLat([fix.lng, fix.lat]); setHeading(meEl, S.heading);
   if (first) { meMarker.addTo(map); map.jumpTo({ center: [fix.lng, fix.lat], zoom: 15.5 }); }
   else if (S.follow && R.nav) chaseCam(900);
-  else if (S.follow) map.easeTo({ center: [fix.lng, fix.lat], bearing: S.speedKmh > 8 && S.heading != null ? S.heading : map.getBearing(), duration: 900 });
+  else if (S.follow) map.easeTo({ center: [fix.lng, fix.lat], bearing: followBearing(), duration: 900 });
   renderList();
   navTick();
 }
@@ -763,9 +764,10 @@ function ttArrow(m = "") {
 }
 async function fetchRoutes(from, to) {
   if (TT === "tomtom") {
-    try { return await fetchTomTom(from, to); }
+    try { const r = await fetchTomTom(from, to); R.src = "tomtom"; return r; }
     catch (e) { console.warn("TomTom falhou, a usar rotas sem trânsito", e); }
   }
+  R.src = "osrm";
   return fetchOsrm(from, to);
 }
 async function fetchTomTom(from, to) {
@@ -828,6 +830,7 @@ function tagOptions() {
 }
 function renderOptions() {
   const el = $("rOpts"), o = R.options || [];
+  $("rPowered").hidden = R.src !== "tomtom";
   const base = o[0];
   el.innerHTML = o.map((r, i) => {
     const extraKm = r.distance - base.distance;
@@ -910,13 +913,14 @@ function instruction(st) {
   }
 }
 // third-person view: camera low and behind the car, car in the lower part of the screen, facing the way you drive
+function followBearing() { return S.north ? 0 : S.heading != null ? S.heading : map.getBearing(); }
 function routeBearing() {
   const st = R.steps[R.step]; if (!st || !S.me) return map.getBearing();
   const loc = st.maneuver.location; return bearing(S.me, { lng: loc[0], lat: loc[1] });
 }
 function chaseCam(duration) {
   if (!S.me) return;
-  const head = S.speedKmh > 5 && S.heading != null ? S.heading : routeBearing();
+  const head = S.north ? 0 : S.speedKmh > 5 && S.heading != null ? S.heading : routeBearing();
   map.easeTo({ center: [S.me.lng, S.me.lat], zoom: 18.2, pitch: 55, bearing: head,
     padding: { top: Math.round(innerHeight * 0.38), bottom: 0, left: 0, right: 0 }, duration });
 }
@@ -994,7 +998,7 @@ document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => $(b.dat
 ["events", "profile", "search"].forEach(id => $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; }));
 $("openEvents").onclick = () => { $("events").hidden = false; loadEvents(); };
 $("openProfile").onclick = () => { $("profile").hidden = false; fillProfile(); loadProfiles(); };
-$("recenter").onclick = () => { S.follow = true; if (R.nav) { chaseCam(600); return; } if (S.me) map.easeTo({ center: [S.me.lng, S.me.lat], zoom: Math.max(map.getZoom(), 15), pitch: 50 }); else toast("Ainda sem localização"); };
+$("recenter").onclick = () => { S.follow = true; if (R.nav) { chaseCam(600); return; } if (S.me) map.easeTo({ center: [S.me.lng, S.me.lat], zoom: Math.max(map.getZoom(), 15), pitch: 50, bearing: followBearing() }); else toast("Ainda sem localização"); };
 document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => {
   S.filter = b.dataset.filter;
   document.querySelectorAll("[data-filter]").forEach(c => c.setAttribute("aria-pressed", c === b));
@@ -1061,4 +1065,17 @@ $("startNoGps").onclick = () => { $("welcome").hidden = true; gpsMsg("Sem locali
 })();
 
 if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+// ---------------- north button ----------------
+function applyNorth() {
+  $("northBtn").classList.toggle("on", S.north);
+  $("northBtn").setAttribute("aria-label", S.north ? "Mapa com norte fixo (toca para seguir a tua direção)" : "Pôr o norte para cima");
+}
+map.on("rotate", () => { $("northNeedle").style.transform = `rotate(${-map.getBearing()}deg)`; });
+$("northBtn").onclick = () => {
+  S.north = !S.north; store.set("north", S.north); applyNorth();
+  toast(S.north ? "Norte fixo no topo" : "O mapa segue a tua direção");
+  if (S.north) map.easeTo({ bearing: 0, duration: 500 });
+  else { S.follow = true; if (R.nav) chaseCam(600); else if (S.me) map.easeTo({ center: [S.me.lng, S.me.lat], bearing: followBearing(), duration: 600 }); }
+};
+applyNorth();
 })();

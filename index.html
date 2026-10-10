@@ -44,6 +44,7 @@
     <div class="opts" id="rOpts"></div>
     <div class="ralerts" id="rAlerts"></div>
     <div class="formrow" id="rBtns"><button class="btn hot" id="rStart">Iniciar</button><span class="hint" id="rHint"></span></div>
+    <div class="powered" id="rPowered" hidden>Powered by <b>TomTom</b></div>
   </section>
 
   <div class="ghostbadge" id="ghostBadge" hidden>Não estás a partilhar a tua posição</div>
@@ -93,9 +94,10 @@
 
   <section class="card" id="card" hidden></section>
 
-  <div class="speedo" aria-hidden="true">
-    <canvas id="speedo" width="340" height="340"></canvas>
-    <div class="val"><b id="spd">0</b><span>KM/H</span><em id="hdg">—</em></div>
+  <div class="speedo">
+    <button class="northbtn" id="northBtn" aria-label="Pôr o norte para cima"><svg viewBox="0 0 24 24" id="northNeedle" aria-hidden="true"><path class="n" d="M12 2.5 15.5 12h-7z"/><path class="s" d="M8.5 12h7L12 21.5z"/></svg></button>
+    <canvas aria-hidden="true" id="speedo" width="340" height="340"></canvas>
+    <div class="val" aria-hidden="true"><b id="spd">0</b><span>KM/H</span><em id="hdg">—</em></div>
   </div>
 
   <div class="tools">

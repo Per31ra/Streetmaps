@@ -401,3 +401,14 @@ body.navigating .ralerts{font-size:11px;gap:4px}
 body.navigating .ralerts span{padding:1px 7px}
 body.navigating .musicchip{top:calc(var(--safe-top) + 124px);bottom:auto}
 body.navigating .musicpanel{top:calc(var(--safe-top) + 160px);bottom:auto}
+
+/* v10: TomTom credit while choosing routes, north button above the speedometer */
+.powered{font-size:11px;color:var(--mute);text-align:right;letter-spacing:.02em;margin-top:-2px}
+.powered b{color:var(--ink,#fff);font-weight:700}
+.route.nav .powered{display:none}
+.northbtn{position:absolute;left:50%;top:-50px;transform:translateX(-50%);width:42px;height:42px;border-radius:50%;pointer-events:auto;cursor:pointer;
+  background:rgba(14,16,22,.82);border:.5px solid var(--hair);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 6px 18px rgba(0,0,0,.45);display:grid;place-items:center;padding:0}
+.northbtn svg{width:24px;height:24px;transition:transform .2s linear}
+.northbtn .n{fill:#ff3b4e}
+.northbtn .s{fill:#cfd6e4}
+.northbtn.on{border-color:#ff3b4e;box-shadow:0 0 0 2px rgba(255,59,78,.35),0 6px 18px rgba(0,0,0,.45)}
