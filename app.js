@@ -325,8 +325,9 @@ function neonify() {
     const tiles = CFG.tomtomKey
       ? [`https://api.tomtom.com/map/1/tile/sat/main/{z}/{x}/{y}.jpg?key=${CFG.tomtomKey}`]
       : ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"];
-    map.addSource("sat", { type: "raster", tiles, tileSize: 256, maxzoom: 19, attribution: CFG.tomtomKey ? "Satélite © TomTom" : "Satélite © Esri, Maxar, Earthstar Geographics" });
-    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: S.sat ? "visible" : "none" }, paint: { "raster-saturation": -0.1, "raster-brightness-max": 0.85 } }, firstLine);
+    // on sharp phone screens ask for one zoom level more detail, otherwise the imagery looks blurry
+    map.addSource("sat", { type: "raster", tiles, tileSize: devicePixelRatio >= 2 ? 128 : 256, maxzoom: 19, attribution: CFG.tomtomKey ? "Satélite © TomTom" : "Satélite © Esri, Maxar, Earthstar Geographics" });
+    map.addLayer({ id: "sat", type: "raster", source: "sat", layout: { visibility: S.sat ? "visible" : "none" }, paint: { "raster-saturation": 0, "raster-contrast": 0.08, "raster-brightness-max": 0.95 } }, firstLine);
   }
   // 3D buildings (OpenMapTiles "building" layer)
   const vec = Object.entries(map.getStyle().sources || {}).find(([, src]) => src.type === "vector")?.[0];
