@@ -412,3 +412,12 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 160px);bottom:auto}
 .northbtn .n{fill:#ff3b4e}
 .northbtn .s{fill:#cfd6e4}
 .northbtn.on{border-color:#ff3b4e;box-shadow:0 0 0 2px rgba(255,59,78,.35),0 6px 18px rgba(0,0,0,.45)}
+
+/* v11: quick fuel search, TomTom credit in the corner while navigating */
+.quick{display:flex;gap:8px;flex-wrap:wrap}
+.qbtn{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;border:.5px solid var(--hair);background:rgba(255,255,255,.07);color:inherit;font-family:var(--ios);font-weight:600;font-size:14px;cursor:pointer}
+.qbtn svg{width:18px;height:18px;fill:none;stroke:#ffb020;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.qbtn:active{transform:scale(.97)}
+.route.nav .powered{display:block;position:absolute;right:10px;bottom:6px;margin:0;font-size:10px;opacity:.8}
+.route.nav .ralerts{padding-right:110px}
+.route.nav .powered[hidden]{display:none}

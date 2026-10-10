@@ -746,6 +746,33 @@ $("sResults").addEventListener("click", e => {
   $("search").hidden = true;
   planRoute(d);
 });
+// fuel stations within 100 km, nearest first
+async function fuelNearby(ref) {
+  if (TT === "tomtom") {
+    try {
+      const url = `https://api.tomtom.com/search/2/categorySearch/posto%20de%20combust%C3%ADvel.json?key=${CFG.tomtomKey}` +
+        `&lat=${ref.lat.toFixed(5)}&lon=${ref.lng.toFixed(5)}&radius=100000&limit=100&categorySet=7311&language=pt-PT`;
+      const res = await fetch(url); if (!res.ok) throw new Error("tomtom " + res.status);
+      const j = await res.json();
+      return (j.results || []).map(r => ({
+        title: r.poi?.brands?.[0]?.name && !(r.poi.name || "").toLowerCase().includes(r.poi.brands[0].name.toLowerCase()) ? `${r.poi.brands[0].name} · ${r.poi.name}` : (r.poi?.name || "Bomba de gasolina"),
+        sub: r.address?.freeformAddress || "", lat: r.position.lat, lng: r.position.lon }));
+    } catch (e) { console.warn("TomTom falhou, a usar o OpenStreetMap", e); }
+  }
+  const res = await fetch(`${CFG.geocoderUrl}?q=fuel&osm_tag=amenity:fuel&limit=50&lat=${ref.lat.toFixed(4)}&lon=${ref.lng.toFixed(4)}`);
+  if (!res.ok) throw new Error("geocoder " + res.status);
+  const j = await res.json();
+  return (j.features || []).map(f => { const p = f.properties || {};
+    return { title: p.name || p.brand || "Bomba de gasolina", sub: [[p.street, p.housenumber].filter(Boolean).join(" "), p.city].filter(Boolean).join(", "), lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }; });
+}
+$("fuelBtn").onclick = async () => {
+  const ref = S.me || { lat: map.getCenter().lat, lng: map.getCenter().lng };
+  $("sInput").value = ""; renderResults([], "A procurar bombas de gasolina perto de ti…");
+  try {
+    const list = (await fuelNearby(ref)).filter(r => distM(ref, r) <= 100000).sort((a, b) => distM(ref, a) - distM(ref, b));
+    renderResults(list, list.length ? "" : "Não encontrei bombas de gasolina num raio de 100 km.");
+  } catch { renderResults([], "A pesquisa não respondeu. Verifica a ligação e tenta outra vez."); }
+};
 $("searchBtn").onclick = () => { $("search").hidden = false; setTimeout(() => $("sInput").focus(), 50); };
 
 // Every router is normalised to {distance, duration, noTraffic, delay, geometry, steps, jams}
