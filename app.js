@@ -271,6 +271,9 @@ const ROAD_CASING = ["match", ["get", "class"],
   "#1a2438"];
 // ---------------- big city names while zoomed out ----------------
 const CITY_Z = 9.5, cityMk = new Map();
+// cities with their own lettering (style.css .c-<name>); the rest use the app theme
+const CITY_STYLES = new Set(["lisboa", "lisbon", "porto", "coimbra", "braga", "guimaraes", "aveiro", "faro", "evora", "setubal", "funchal",
+  "viseu", "leiria", "ponta-delgada", "madrid", "barcelona", "sevilla", "sevilha", "paris", "londres", "london", "roma", "rome"]);
 function cityLabels() {
   const src = Object.entries(map.getStyle()?.sources || {}).find(([, x]) => x.type === "vector")?.[0];
   const want = new Map();
@@ -289,7 +292,8 @@ function cityLabels() {
   }
   for (const [k, m] of cityMk) if (!want.has(k)) { m.remove(); cityMk.delete(k); }
   for (const [k, v] of want) if (!cityMk.has(k)) {
-    const el = document.createElement("div"); el.className = "citylbl" + (v.big ? " big" : ""); el.textContent = k;
+    const slug = k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]+/g, "-");
+    const el = document.createElement("div"); el.className = "citylbl" + (v.big ? " big" : "") + (CITY_STYLES.has(slug) ? " own c-" + slug : ""); el.textContent = k;
     cityMk.set(k, new maplibregl.Marker({ element: el }).setLngLat(v.c).addTo(map));
   }
 }

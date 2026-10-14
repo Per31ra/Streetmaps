@@ -450,3 +450,40 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 :root[data-theme="vice"] .citylbl{font-family:"Yellowtail",var(--f-display);font-style:normal;font-weight:400;text-transform:none;letter-spacing:0;font-size:26px;
   background:linear-gradient(180deg,#ffd36b 10%,#ff8a3d 45%,#ff2e88 85%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 6px rgba(255,46,136,.7)) drop-shadow(0 1px 2px rgba(0,0,0,.9))}
 :root[data-theme="vice"] .citylbl.big{font-size:36px}
+
+/* v19: each big city with its own lettering (own fonts and colours, no logos or crests) */
+.citylbl.own,:root[data-theme="vice"] .citylbl.own{font-style:normal;font-weight:400;text-transform:none;letter-spacing:.02em;font-size:30px;filter:none;
+  -webkit-background-clip:border-box;background-clip:border-box;background:none;color:#fff}
+.citylbl.own.big{font-size:38px}
+/* Lisboa: amarelo do elétrico e azul dos azulejos */
+.c-lisboa,.c-lisbon{font-family:"Abril Fatface",serif!important;color:#ffd21f!important;text-shadow:3px 3px 0 #1f4fbf,0 0 14px rgba(255,210,31,.6)!important}
+/* Porto: azulejo azul e branco */
+.c-porto{font-family:"Bebas Neue",sans-serif!important;letter-spacing:.12em!important;color:#fff!important;text-shadow:0 0 0 #fff,3px 3px 0 #1d4ed8,6px 6px 0 rgba(29,78,216,.45)!important}
+/* Coimbra: tradição académica, negro e dourado */
+.c-coimbra{font-family:"UnifrakturMaguntia",serif!important;color:#f3c75a!important;text-shadow:0 2px 0 #000,0 0 12px rgba(243,199,90,.55)!important}
+/* Braga: barroco, pedra e ouro */
+.c-braga{font-family:"Cinzel",serif!important;font-weight:900!important;color:#f6e7c1!important;text-shadow:0 0 10px rgba(212,160,60,.8),0 2px 3px #000!important}
+/* Guimarães: berço, medieval */
+.c-guimaraes{font-family:"MedievalSharp",serif!important;color:#e8d9b0!important;text-shadow:2px 2px 0 #6b3b12,0 0 10px rgba(0,0,0,.8)!important}
+/* Aveiro: moliceiros às riscas */
+.c-aveiro{font-family:"Lobster",cursive!important;background:linear-gradient(180deg,#ff3b3b 0 25%,#ffd23d 25% 50%,#2fe07a 50% 75%,#2f86ff 75%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;filter:drop-shadow(0 2px 2px rgba(0,0,0,.9))!important}
+/* Faro: sol e mar do Algarve */
+.c-faro{font-family:"Pacifico",cursive!important;background:linear-gradient(180deg,#ffb347 20%,#ff5f6d 60%,#2de2e6 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;filter:drop-shadow(0 2px 3px rgba(0,0,0,.9))!important}
+/* Évora: templo romano, mármore */
+.c-evora{font-family:"Cinzel",serif!important;font-weight:700!important;letter-spacing:.14em!important;color:#f4f1ea!important;text-shadow:0 0 8px rgba(255,255,255,.4),0 2px 3px #000!important}
+/* Setúbal: Sado e golfinhos */
+.c-setubal{font-family:"Lobster",cursive!important;color:#5ad8ff!important;text-shadow:2px 2px 0 #0b3a66,0 0 12px rgba(90,216,255,.6)!important}
+/* Funchal: flores e verde da Madeira */
+.c-funchal{font-family:"Pacifico",cursive!important;color:#ff5fb2!important;text-shadow:2px 2px 0 #145c2e,0 0 12px rgba(255,95,178,.55)!important}
+/* Viseu e Leiria: castelo e pinhal */
+.c-viseu,.c-leiria{font-family:"Cinzel",serif!important;font-weight:700!important;color:#bfe8a6!important;text-shadow:0 2px 3px #000,0 0 10px rgba(80,160,60,.6)!important}
+/* Ponta Delgada: hortênsias dos Açores */
+.c-ponta-delgada{font-family:"Pacifico",cursive!important;color:#9db7ff!important;text-shadow:2px 2px 0 #4a2d8a,0 0 12px rgba(157,183,255,.6)!important}
+/* Espanha e outras capitais */
+.c-madrid{font-family:"Righteous",sans-serif!important;color:#ffcf3a!important;text-shadow:3px 3px 0 #c8102e!important}
+.c-barcelona{font-family:"Righteous",sans-serif!important;background:linear-gradient(90deg,#ff6b6b,#ffd23d,#2fe07a,#2f86ff,#b03cff)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;filter:drop-shadow(0 2px 2px rgba(0,0,0,.9))!important}
+.c-sevilla,.c-sevilha{font-family:"Lobster",cursive!important;color:#ffb020!important;text-shadow:2px 2px 0 #8a1538!important}
+.c-paris{font-family:"Great Vibes",cursive!important;font-size:40px!important;color:#fff!important;text-shadow:0 0 12px rgba(255,180,220,.8),0 2px 3px #000!important}
+.c-londres,.c-london{font-family:"Bebas Neue",sans-serif!important;letter-spacing:.1em!important;color:#fff!important;text-shadow:3px 3px 0 #d0021b!important}
+.c-roma,.c-rome{font-family:"Cinzel",serif!important;font-weight:900!important;color:#f2c14e!important;text-shadow:2px 2px 0 #7a1414!important}
+.c-aveiro,.c-faro,.c-barcelona{text-shadow:none!important}
