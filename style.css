@@ -440,3 +440,4 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .topnum span{font-family:var(--f-display);font-style:italic;font-weight:800;color:var(--heat);letter-spacing:.12em}
 .topcard p{flex:1;min-width:150px;margin:0;font-size:13px;color:var(--mute)}
 .topsec .hint{margin-top:8px}
+@media (max-width:760px){ .speedo{bottom:calc(var(--sheet,60px) - 6px);z-index:6} }
