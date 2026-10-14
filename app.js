@@ -269,6 +269,33 @@ const ROAD_CASING = ["match", ["get", "class"],
   ["trunk", "primary"], "#4d3a07",
   ["secondary", "tertiary"], "#0b4325",
   "#1a2438"];
+// ---------------- big city names while zoomed out ----------------
+const CITY_Z = 9.5, cityMk = new Map();
+function cityLabels() {
+  const src = Object.entries(map.getStyle()?.sources || {}).find(([, x]) => x.type === "vector")?.[0];
+  const want = new Map();
+  if (src && map.getZoom() < CITY_Z) {
+    let feats = [];
+    try { feats = map.querySourceFeatures(src, { sourceLayer: "place", filter: ["==", ["get", "class"], "city"] }); } catch {}
+    const b = map.getBounds(), seen = new Set(), placed = [];
+    feats.map(f => ({ p: f.properties || {}, c: f.geometry.coordinates }))
+      .filter(x => Array.isArray(x.c) && b.contains(x.c))
+      .sort((a, z) => (a.p.capital ? 0 : 1) - (z.p.capital ? 0 : 1) || (a.p.rank ?? 99) - (z.p.rank ?? 99))
+      .forEach(x => {
+        const name = x.p["name:pt"] || x.p["name:latin"] || x.p.name; if (!name || seen.has(name) || want.size >= 10) return;
+        const pt = map.project(x.c); if (placed.some(q => Math.abs(q.x - pt.x) < 140 && Math.abs(q.y - pt.y) < 46)) return;
+        seen.add(name); placed.push(pt); want.set(name, { c: x.c, big: x.p.capital === 2 || (x.p.rank ?? 99) <= 3 });
+      });
+  }
+  for (const [k, m] of cityMk) if (!want.has(k)) { m.remove(); cityMk.delete(k); }
+  for (const [k, v] of want) if (!cityMk.has(k)) {
+    const el = document.createElement("div"); el.className = "citylbl" + (v.big ? " big" : ""); el.textContent = k;
+    cityMk.set(k, new maplibregl.Marker({ element: el }).setLngLat(v.c).addTo(map));
+  }
+}
+map.on("moveend", cityLabels);
+map.on("idle", () => { if (map.getZoom() < CITY_Z) cityLabels(); });
+map.on("zoom", () => { if (map.getZoom() >= CITY_Z && cityMk.size) cityLabels(); });
 function neonify() {
   const layers = map.getStyle()?.layers || [], t = T();
   const set = (id, prop, val) => { try { map.setPaintProperty(id, prop, val); } catch {} };
@@ -291,6 +318,13 @@ function neonify() {
         if (/casing|outline/.test(id)) set(l.id, "line-color", ROAD_CASING);
         else { set(l.id, "line-color", roadColor()); set(l.id, "line-opacity", ["match", ["get", "class"], ["secondary", "tertiary"], 0.8, 1]); }
       }
+    }
+    else if (l.type === "symbol" && l["source-layer"] === "place") {
+      set(l.id, "text-color", t.text); set(l.id, "text-halo-color", t.halo); set(l.id, "text-halo-width", 1.2);
+      // fewer small places: villages only when zoomed in, hamlets and neighbourhoods closer still;
+      // big cities are drawn as themed HTML labels while zoomed out (see cityLabels)
+      const zr = /city/.test(id) ? CITY_Z : /town/.test(id) ? 9 : /village/.test(id) ? 12.5 : /country|state|continent|capital/.test(id) ? null : 14;
+      if (zr != null) try { map.setLayerZoomRange(l.id, Math.max(zr, l.minzoom || 0), l.maxzoom ?? 24); } catch {}
     }
     else if (l.type === "symbol") { set(l.id, "text-color", t.text); set(l.id, "text-halo-color", t.halo); set(l.id, "text-halo-width", 1.2); }
   }

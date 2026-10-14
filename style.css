@@ -442,3 +442,11 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .topsec .hint{margin-top:8px}
 @media (max-width:760px){ .speedo{bottom:calc(var(--sheet,60px) - 6px);z-index:6} }
 .menu{z-index:8}
+
+/* v18: big city names while zoomed out, in the theme's lettering */
+.citylbl{pointer-events:none;white-space:nowrap;font-family:var(--f-display);font-style:italic;font-weight:900;font-size:20px;letter-spacing:.06em;text-transform:uppercase;
+  color:#fff;text-shadow:0 0 10px rgba(47,134,255,.85),0 0 2px #000,0 2px 6px rgba(0,0,0,.8);transform-origin:center}
+.citylbl.big{font-size:28px;text-shadow:0 0 14px rgba(255,138,61,.9),0 0 2px #000,0 2px 8px rgba(0,0,0,.8)}
+:root[data-theme="vice"] .citylbl{font-family:"Yellowtail",var(--f-display);font-style:normal;font-weight:400;text-transform:none;letter-spacing:0;font-size:26px;
+  background:linear-gradient(180deg,#ffd36b 10%,#ff8a3d 45%,#ff2e88 85%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 0 6px rgba(255,46,136,.7)) drop-shadow(0 1px 2px rgba(0,0,0,.9))}
+:root[data-theme="vice"] .citylbl.big{font-size:36px}
