@@ -441,3 +441,4 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .topcard p{flex:1;min-width:150px;margin:0;font-size:13px;color:var(--mute)}
 .topsec .hint{margin-top:8px}
 @media (max-width:760px){ .speedo{bottom:calc(var(--sheet,60px) - 6px);z-index:6} }
+.menu{z-index:8}

@@ -65,11 +65,11 @@ function badgesHtml(ids) {
 const THEMES = {
   street: { bg: "#131b2c", water: "#102a52", park: "#15332c", building: "#1d2a42", buildingLine: "#2c3d5c", land: "#162034",
     extr: "#22304b", building3d: "#26344f", waterLine: "#1a3a6a", boundary: "#3b4868", rail: "#36415a", text: "#c9d5ea", halo: "#131b2c",
-    motorway: "#2f86ff", national: "#ffd23d", municipal: "#2fe07a", minor: "#55658a", other: "#414f6e",
+    motorway: "#4fa6ff", national: "#ffe04a", municipal: "#2fe07a", minor: "#55658a", other: "#414f6e",
     speedo: ["#2f86ff", "#ffd23d", "#ff3b3b"], route: "#ff8a3d", routeGlow: "#ff6a1a" },
   vice: { bg: "#241238", water: "#0e4f63", park: "#1c4136", building: "#33204d", buildingLine: "#4a2d6b", land: "#2a1642",
     extr: "#3d2560", building3d: "#4a2a6e", waterLine: "#1f7a8c", boundary: "#6b3d8a", rail: "#4d3366", text: "#ffd9ef", halo: "#241238",
-    motorway: "#39c8ff", national: "#ffcf4a", municipal: "#3cf2a6", minor: "#8a5fb0", other: "#6c4a8f",
+    motorway: "#5ad8ff", national: "#ffdd5e", municipal: "#3cf2a6", minor: "#8a5fb0", other: "#6c4a8f",
     speedo: ["#2de2e6", "#ff8a3d", "#ff2e88"], route: "#ff2e88", routeGlow: "#ff8a3d" },
 };
 const T = () => THEMES[S.theme] || THEMES.street;
@@ -289,11 +289,21 @@ function neonify() {
       else if (l["source-layer"] === "transportation" || /road|street|highway|motorway|trunk|primary|secondary|tertiary|minor|service|path|track|bridge|tunnel/.test(id)) {
         // autoestradas azul, nacionais amarelo, municipais verde
         if (/casing|outline/.test(id)) set(l.id, "line-color", ROAD_CASING);
-        else set(l.id, "line-color", roadColor());
+        else { set(l.id, "line-color", roadColor()); set(l.id, "line-opacity", ["match", ["get", "class"], ["secondary", "tertiary"], 0.8, 1]); }
       }
     }
     else if (l.type === "symbol") { set(l.id, "text-color", t.text); set(l.id, "text-halo-color", t.halo); set(l.id, "text-halo-width", 1.2); }
   }
+  // soft glow under motorways and national roads so they stand out
+  const vsrc = Object.entries(map.getStyle().sources || {}).find(([, src]) => src.type === "vector")?.[0];
+  if (vsrc && !map.getLayer("road-glow")) {
+    const firstRoad = layers.find(l => l.type === "line" && l["source-layer"] === "transportation")?.id;
+    map.addLayer({ id: "road-glow", type: "line", source: vsrc, "source-layer": "transportation", minzoom: 6,
+      filter: ["match", ["get", "class"], ["motorway", "trunk", "primary"], true, false],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": roadColor(), "line-opacity": 0.35, "line-blur": 6,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 6, 3, 10, 8, 14, 16, 18, 34] } }, firstRoad);
+  } else if (map.getLayer("road-glow")) map.setPaintProperty("road-glow", "line-color", roadColor());
   // live traffic flow overlay (TomTom), drawn under the labels
   if (CFG.tomtomKey && CFG.showTraffic && !map.getSource("traffic")) {
     const firstSymbol = (map.getStyle().layers || []).find(l => l.type === "symbol")?.id;
@@ -302,7 +312,6 @@ function neonify() {
     map.addLayer({ id: "traffic", type: "raster", source: "traffic", paint: { "raster-opacity": 0.85 }, layout: { visibility: S.traffic === false ? "none" : "visible" } }, firstSymbol);
   }
   // race tracks (OSM highway=raceway) and fuel stations (OSM amenity=fuel), shown when zooming in
-  const vsrc = Object.entries(map.getStyle().sources || {}).find(([, src]) => src.type === "vector")?.[0];
   const font = (map.getStyle().layers || []).find(l => l.type === "symbol" && l.layout?.["text-font"])?.layout["text-font"];
   if (vsrc && !map.getLayer("raceway")) {
     const before = (map.getStyle().layers || []).find(l => l.type === "symbol")?.id;
