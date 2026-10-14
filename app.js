@@ -383,6 +383,26 @@ function startGps() {
     gpsMsg(err.code === 1 ? "Localização bloqueada. Ativa-a nas definições do browser para apareceres no mapa." : "A procurar sinal de GPS…");
   }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
 }
+// top speed: kept only on this phone, never shared. Uses the speed the GPS reports itself,
+// with good accuracy, and the lower of two fixes in a row so a single glitch can't set a record.
+let prevGpsKmh = 0;
+function trackTop(p) {
+  const v = p.coords.speed, acc = p.coords.accuracy;
+  if (v == null || isNaN(v) || !(acc <= 25)) { prevGpsKmh = 0; return; }
+  const kmh = v * 3.6, steady = Math.min(kmh, prevGpsKmh); prevGpsKmh = kmh;
+  if (steady > 400) return;
+  const top = store.get("topSpeed", null);
+  if (steady >= 5 && (!top || steady > top.kmh)) {
+    store.set("topSpeed", { kmh: Math.round(steady), at: Date.now(), car: S.profile?.car || "" });
+    if (!$("profile").hidden) renderTop();
+  }
+}
+function renderTop() {
+  const top = store.get("topSpeed", null);
+  $("topVal").textContent = top ? top.kmh : "—";
+  $("topMeta").textContent = top ? [new Date(top.at).toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" }), top.car].filter(Boolean).join(" · ") : "Ainda sem registo. Conduz com a app aberta e o GPS ligado.";
+  $("topReset").hidden = !top;
+}
 function gpsMsg(t) { const b = $("gpsBadge"); b.textContent = t; b.hidden = !t; }
 function onFix(p) {
   gpsMsg("");
@@ -397,6 +417,7 @@ function onFix(p) {
   lastFix = fix;
   S.me = { lat: fix.lat, lng: fix.lng };
   S.speedKmh = Math.max(0, (speed || 0) * 3.6);
+  trackTop(p);
   if (head != null && !isNaN(head) && S.speedKmh > 3) S.heading = head;
   meMarker.setLngLat([fix.lng, fix.lat]); setHeading(meEl, S.heading);
   if (first) { meMarker.addTo(map); map.jumpTo({ center: [fix.lng, fix.lat], zoom: 15.5 }); }
@@ -479,20 +500,20 @@ function drawSpeedo() {
   const a0 = Math.PI * .72, a1 = Math.PI * 2.28, lit = Math.min(shown, max) / max * SEG;
   c.clearRect(0, 0, Z, Z);
   // dark disc
-  const bg = c.createRadialGradient(cx, cy, 20, cx, cy, 168); bg.addColorStop(0, "rgba(16,20,30,.92)"); bg.addColorStop(1, "rgba(5,7,12,.92)");
+  const bg = c.createRadialGradient(cx, cy, 20, cx, cy, 168); bg.addColorStop(0, "rgba(14,18,28,.97)"); bg.addColorStop(1, "rgba(3,5,10,.98)");
   c.fillStyle = bg; c.beginPath(); c.arc(cx, cy, 166, 0, 7); c.fill();
-  c.strokeStyle = "rgba(255,255,255,.08)"; c.lineWidth = 2; c.stroke();
+  c.strokeStyle = "rgba(255,255,255,.22)"; c.lineWidth = 3; c.stroke();
   // segmented rev-style arc: blue -> yellow -> red
   for (let i = 0; i < SEG; i++) {
     const a = a0 + (a1 - a0) * (i + .1) / SEG, b = a0 + (a1 - a0) * (i + .85) / SEG, f = i / SEG;
     const sc = T().speedo, col = f < .55 ? sc[0] : f < .8 ? sc[1] : sc[2];
-    c.strokeStyle = i < lit ? col : "rgba(255,255,255,.08)";
-    c.lineWidth = i < lit ? 20 : 14; c.shadowColor = col; c.shadowBlur = i < lit ? 14 : 0;
+    c.strokeStyle = i < lit ? col : "rgba(255,255,255,.16)";
+    c.lineWidth = i < lit ? 24 : 16; c.shadowColor = col; c.shadowBlur = i < lit ? 14 : 0;
     c.beginPath(); c.arc(cx, cy, 138, a, b); c.stroke();
   }
   c.shadowBlur = 0;
   // scale numbers
-  c.fillStyle = "rgba(233,238,248,.5)"; c.font = "italic 700 19px 'Saira Condensed',sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
+  c.fillStyle = "rgba(233,238,248,.8)"; c.font = "italic 800 22px 'Saira Condensed',sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
   for (let k = 0; k <= max; k += 40) { const a = a0 + (a1 - a0) * k / max; c.fillText(k, cx + Math.cos(a) * 104, cy + Math.sin(a) * 104); }
   $("spd").textContent = Math.round(shown);
   const h = S.heading;
@@ -1035,7 +1056,8 @@ document.querySelectorAll("[data-theme-pick]").forEach(b => b.onclick = () => { 
 document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => $(b.dataset.close).hidden = true);
 ["events", "profile", "search"].forEach(id => $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; }));
 $("openEvents").onclick = () => { $("events").hidden = false; loadEvents(); };
-$("openProfile").onclick = () => { $("profile").hidden = false; fillProfile(); loadProfiles(); };
+$("openProfile").onclick = () => { $("profile").hidden = false; fillProfile(); renderTop(); loadProfiles(); };
+$("topReset").onclick = () => { if (confirm("Apagar o teu recorde de velocidade?")) { store.set("topSpeed", null); renderTop(); } };
 $("recenter").onclick = () => { S.follow = true; if (R.nav) { chaseCam(600); return; } if (S.me) map.easeTo({ center: [S.me.lng, S.me.lat], zoom: Math.max(map.getZoom(), 15), pitch: 50, bearing: followBearing() }); else toast("Ainda sem localização"); };
 document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => {
   S.filter = b.dataset.filter;

@@ -421,3 +421,22 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .route .powered{position:static;display:block;text-align:right;margin:-2px 0 0}
 .route.nav .powered{font-size:10px;opacity:.85}
 .route .powered[hidden]{display:none}
+
+/* v14: more readable speedometer, top speed card in the profile */
+.speedo{filter:drop-shadow(0 6px 18px rgba(0,0,0,.6))}
+.speedo .val b{background:none;color:#fff;-webkit-text-fill-color:#fff;text-shadow:0 0 14px rgba(255,255,255,.35),0 2px 4px #000;font-size:64px}
+:root[data-theme="vice"] .speedo .val b{background:none;color:#fff;-webkit-text-fill-color:#fff;text-shadow:0 0 16px rgba(255,46,136,.6),0 2px 4px #000}
+.speedo .val span{font-size:14px}
+@media (max-width:760px){
+  .speedo{width:148px;height:148px}
+  .speedo .val b{font-size:50px}
+  .speedo .val span{font-size:11px}
+  .speedo .val em{font-size:10px;margin-top:2px}
+  .tools{left:174px}
+}
+.topcard{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;border-radius:16px;background:linear-gradient(120deg,rgba(255,59,78,.16),rgba(255,138,61,.08));border:.5px solid var(--hair)}
+.topnum{display:flex;align-items:baseline;gap:6px}
+.topnum b{font-family:var(--f-display);font-style:italic;font-weight:900;font-size:46px;line-height:1;color:#fff}
+.topnum span{font-family:var(--f-display);font-style:italic;font-weight:800;color:var(--heat);letter-spacing:.12em}
+.topcard p{flex:1;min-width:150px;margin:0;font-size:13px;color:var(--mute)}
+.topsec .hint{margin-top:8px}
