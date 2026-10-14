@@ -381,7 +381,7 @@ function startGps() {
   if (!("geolocation" in navigator)) { gpsMsg("Este dispositivo não dá acesso à localização."); return; }
   watchId = navigator.geolocation.watchPosition(onFix, err => {
     gpsMsg(err.code === 1 ? "Localização bloqueada. Ativa-a nas definições do browser para apareceres no mapa." : "A procurar sinal de GPS…");
-  }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 });
 }
 // top speed: kept only on this phone, never shared. Uses the speed the GPS reports itself,
 // with good accuracy, and the lower of two fixes in a row so a single glitch can't set a record.
@@ -403,6 +403,32 @@ function renderTop() {
   $("topMeta").textContent = top ? [new Date(top.at).toLocaleDateString("pt-PT", { day: "numeric", month: "long", year: "numeric" }), top.car].filter(Boolean).join(" · ") : "Ainda sem registo. Conduz com a app aberta e o GPS ligado.";
   $("topReset").hidden = !top;
 }
+// smooth movement: GPS gives about one fix per second, so the arrow glides from the old
+// position to the new one over that time, and the camera follows it every frame
+const me2 = { pos: null, head: 0 }, glide = { from: null, to: null, t0: 0, dur: 1000, h0: 0, h1: 0 };
+let camTarget = null;
+function angLerp(a, b, t) { const d = ((b - a + 540) % 360) - 180; return (a + d * t + 360) % 360; }
+function glideTo(fix, gapMs) {
+  Object.assign(glide, { from: me2.pos || fix, to: fix, t0: performance.now(), dur: Math.min(Math.max(gapMs || 1000, 300), 2000) * 1.05,
+    h0: me2.head, h1: S.heading != null ? S.heading : me2.head });
+}
+function glideFrame(now) {
+  requestAnimationFrame(glideFrame);
+  if (!glide.to) return;
+  const t = Math.min(1, (now - glide.t0) / glide.dur);
+  const moving = t < 1 || Math.abs(((glide.h1 - me2.head + 540) % 360) - 180) > 0.2;
+  if (moving) {
+    me2.pos = { lat: glide.from.lat + (glide.to.lat - glide.from.lat) * t, lng: glide.from.lng + (glide.to.lng - glide.from.lng) * t };
+    me2.head = angLerp(glide.h0, glide.h1, t);
+    meMarker.setLngLat([me2.pos.lng, me2.pos.lat]); setHeading(meEl, me2.head);
+  }
+  if (!S.follow || map.isEasing() || !me2.pos) return;
+  const b = map.getBearing(), target = camTarget == null ? b : camTarget;
+  const turn = ((target - b + 540) % 360) - 180, c = map.getCenter();
+  if (!moving && Math.abs(turn) < 0.1 && Math.abs(c.lat - me2.pos.lat) < 1e-7 && Math.abs(c.lng - me2.pos.lng) < 1e-7) return;
+  map.jumpTo({ center: [me2.pos.lng, me2.pos.lat], bearing: Math.abs(turn) < 0.1 ? target : angLerp(b, target, 0.08) });
+}
+requestAnimationFrame(glideFrame);
 function gpsMsg(t) { const b = $("gpsBadge"); b.textContent = t; b.hidden = !t; }
 function onFix(p) {
   gpsMsg("");
@@ -413,16 +439,15 @@ function onFix(p) {
     if ((speed == null || isNaN(speed)) && dt > 0) speed = d / dt;
     if ((head == null || isNaN(head)) && d > 4) head = bearing(lastFix, fix);
   }
-  const first = !S.me;
+  const first = !S.me, gap = lastFix ? fix.t - lastFix.t : 1000;
   lastFix = fix;
   S.me = { lat: fix.lat, lng: fix.lng };
   S.speedKmh = Math.max(0, (speed || 0) * 3.6);
   trackTop(p);
   if (head != null && !isNaN(head) && S.speedKmh > 3) S.heading = head;
-  meMarker.setLngLat([fix.lng, fix.lat]); setHeading(meEl, S.heading);
-  if (first) { meMarker.addTo(map); map.jumpTo({ center: [fix.lng, fix.lat], zoom: 15.5 }); }
-  else if (S.follow && R.nav) chaseCam(900);
-  else if (S.follow) map.easeTo({ center: [fix.lng, fix.lat], bearing: followBearing(), duration: 900 });
+  if (first) { me2.pos = fix; me2.head = S.heading || 0; meMarker.setLngLat([fix.lng, fix.lat]).addTo(map); setHeading(meEl, me2.head); map.jumpTo({ center: [fix.lng, fix.lat], zoom: 15.5 }); }
+  else glideTo(fix, gap);
+  camTarget = S.north ? 0 : R.nav ? (S.speedKmh > 5 && S.heading != null ? S.heading : routeBearing()) : followBearing();
   renderList();
   navTick();
 }
