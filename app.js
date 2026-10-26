@@ -367,6 +367,7 @@ function neonify() {
         paint: { "text-color": "#ffd27a", "text-halo-color": T().halo, "text-halo-width": 1.2 } });
     } catch (e) { console.warn(e); }
   }
+  addPriceLayer(font);
   // satellite imagery (TomTom with the key, otherwise Esri World Imagery), drawn under roads and labels
   if (!map.getSource("sat")) {
     const firstLine = (map.getStyle().layers || []).find(l => l.type === "line" || l.type === "symbol")?.id;
@@ -840,15 +841,20 @@ function loadPrices() {
   return pricesP;
 }
 // the DGEG station closest to a point, if one is within 150 m
-async function pricesNear(at) {
+async function pricesNear(at, name = "") {
   const j = await loadPrices(); if (!j) return null;
-  let best = null, bd = 150;
+  const nm = norm(name);
+  let best = null, bd = Infinity;
   for (const st of j.stations) {
-    if (Math.abs(st.lat - at.lat) > 0.003 || Math.abs(st.lng - at.lng) > 0.004) continue;
-    const d = distM(at, st); if (d < bd) { bd = d; best = st; }
+    if (Math.abs(st.lat - at.lat) > 0.006 || Math.abs(st.lng - at.lng) > 0.008) continue;
+    const b = norm(st.b), sameBrand = b.length > 1 && nm.includes(b);
+    // the coordinates in the two sources often differ by a few hundred metres, so the same brand is trusted further away
+    const d = distM(at, st), limit = sameBrand ? 600 : 200, score = sameBrand ? d / 3 : d;
+    if (d <= limit && score < bd) { bd = score; best = st; }
   }
   return best && { ...best, updated: j.updated };
 }
+const norm = t => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const eur = v => v.toFixed(3).replace(".", ",") + " €";
 function pricesHtml(st) {
   if (!st) return `<div class="fuelp none">Sem preços para esta bomba.</div>`;
@@ -858,16 +864,41 @@ function pricesHtml(st) {
   return `<div class="fuelp"><div class="tags"><i class="${has98 ? "ok" : ""}">${has98 ? "Tem 98" : "Sem 98"}</i><i class="${hasAd ? "ok" : ""}">${hasAd ? "Tem gasóleo aditivado" : "Sem gasóleo aditivado"}</i></div>
     ${rows}<small>Preços da DGEG${when ? ", atualizados pela bomba a " + when : ""}</small></div>`;
 }
-async function fillPrices(el, at) {
+async function fillPrices(el, at, known) {
+  if (known && known.p) { el.innerHTML = pricesHtml(known); return; }
   el.innerHTML = `<div class="fuelp none">A carregar preços…</div>`;
-  const st = await pricesNear(at); if (el.isConnected) el.innerHTML = pricesHtml(st);
+  const st = await pricesNear(at, at.title); if (el.isConnected) el.innerHTML = pricesHtml(st);
 }
+// every station in the DGEG list on the map, with its diesel and 95 price when zoomed in.
+// Once it loads, the OpenStreetMap fuel dots are hidden so stations don't show twice.
+async function addPriceLayer(font) {
+  const j = await loadPrices(); if (!j || !map.isStyleLoaded()) return;
+  if (!map.getSource("fuelp")) map.addSource("fuelp", { type: "geojson", data: { type: "FeatureCollection", features: j.stations.map((st, i) => ({
+    type: "Feature", geometry: { type: "Point", coordinates: [st.lng, st.lat] },
+    properties: { i, brand: st.b || st.n, price: [st.p.gasoleo != null ? "G " + st.p.gasoleo.toFixed(3).replace(".", ",") : "", st.p.gasolina95 != null ? "95 " + st.p.gasolina95.toFixed(3).replace(".", ",") : ""].filter(Boolean).join("  ") } })) } });
+  if (map.getLayer("fuelp-dot")) return;
+  map.addLayer({ id: "fuelp-dot", type: "circle", source: "fuelp", minzoom: 11,
+    paint: { "circle-color": "#ffb020", "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 3, 13, 5, 17, 9], "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 } });
+  if (font) map.addLayer({ id: "fuelp-label", type: "symbol", source: "fuelp", minzoom: 13.5,
+    layout: { "text-field": ["format", ["get", "brand"], { "font-scale": 0.9 }, "\n", {}, ["get", "price"], { "font-scale": 1 }], "text-font": font, "text-size": 11,
+      "text-offset": [0, 1.2], "text-anchor": "top", "text-optional": true },
+    paint: { "text-color": "#ffd27a", "text-halo-color": T().halo, "text-halo-width": 1.4 } });
+  for (const id of ["fuel-dot", "fuel-label"]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+}
+map.on("click", "fuelp-dot", e => {
+  const f = e.features?.[0]; if (!f) return;
+  e.originalEvent.stopPropagation(); fuelClick = true;
+  loadPrices().then(j => { const st = j?.stations[f.properties.i]; if (!st) return;
+    showPlaceCard(st.n || st.b || "Bomba de gasolina", st.b || "Combustível", { lat: st.lat, lng: st.lng }, { ...st, updated: j.updated }); });
+});
+map.on("mouseenter", "fuelp-dot", () => map.getCanvas().style.cursor = "pointer");
+map.on("mouseleave", "fuelp-dot", () => map.getCanvas().style.cursor = "");
 function showPlaceCard(title, sub, at, fuel) {
   const card = $("card"); card.className = "card"; card.hidden = false;
   card.innerHTML = `<button class="x" aria-label="Fechar">×</button><div><div class="crew">${esc(sub)}</div><h3>${esc(title)}</h3></div>
     <div class="hint">A ${fmtDist(distM(S.me || LISBOA, at))} de ti</div>${fuel ? '<div id="cardFuel"></div>' : ""}<div class="formrow"><button class="btn hot small" id="cardGo">Ir para aqui</button></div>`;
   card.querySelector(".x").onclick = () => card.hidden = true;
-  if (fuel) fillPrices($("cardFuel"), at);
+  if (fuel) fillPrices($("cardFuel"), { ...at, title }, fuel);
   $("cardGo").onclick = () => { card.hidden = true; planRoute({ title, lat: at.lat, lng: at.lng, fuel }); };
 }
 function popularMeets() {
@@ -960,16 +991,20 @@ async function fuelNearby(ref) {
   return (j.features || []).map(f => { const p = f.properties || {};
     return { title: p.name || p.brand || "Bomba de gasolina", sub: [[p.street, p.housenumber].filter(Boolean).join(" "), p.city].filter(Boolean).join(", "), lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] }; });
 }
+const priceLine = st => [st.p.gasoleo != null && "Gasóleo " + eur(st.p.gasoleo), st.p.gasolina95 != null && "95 " + eur(st.p.gasolina95),
+  (st.p.gasolina98 ?? st.p.gasolina98_aditivada) != null && "98 " + eur(st.p.gasolina98 ?? st.p.gasolina98_aditivada)].filter(Boolean).join(" · ");
 $("fuelBtn").onclick = async () => {
   const ref = S.me || { lat: map.getCenter().lat, lng: map.getCenter().lng };
   $("sInput").value = ""; renderResults([], "A procurar bombas de gasolina perto de ti…");
   try {
-    const list = (await fuelNearby(ref)).filter(r => distM(ref, r) <= 100000).sort((a, b) => distM(ref, a) - distM(ref, b));
-    list.forEach(r => r.fuel = true);
-    // add diesel and 95 prices to each line when the DGEG data has the station
-    await Promise.all(list.map(async r => { const st = await pricesNear(r); if (!st) return;
-      const bits = [st.p.gasoleo != null && "Gasóleo " + eur(st.p.gasoleo), st.p.gasolina95 != null && "95 " + eur(st.p.gasolina95), (st.p.gasolina98 ?? st.p.gasolina98_aditivada) != null && "98 " + eur(st.p.gasolina98 ?? st.p.gasolina98_aditivada)].filter(Boolean);
-      if (bits.length) r.sub = bits.join(" · ") + (r.sub ? " · " + r.sub : ""); }));
+    // in Portugal the DGEG list has every station with prices, so use it; elsewhere, TomTom/OpenStreetMap
+    const j = await loadPrices();
+    let list = (j?.stations || []).filter(st => distM(ref, st) <= 100000).sort((a, b) => distM(ref, a) - distM(ref, b)).slice(0, 80)
+      .map(st => ({ title: st.n || st.b, sub: [st.b && st.b !== st.n ? st.b : "", priceLine(st)].filter(Boolean).join(" · "), lat: st.lat, lng: st.lng, fuel: { ...st, updated: j.updated } }));
+    if (!list.length) {
+      list = (await fuelNearby(ref)).filter(r => distM(ref, r) <= 100000).sort((a, b) => distM(ref, a) - distM(ref, b));
+      list.forEach(r => r.fuel = true);
+    }
     renderResults(list, list.length ? "" : "Não encontrei bombas de gasolina num raio de 100 km.");
   } catch { renderResults([], "A pesquisa não respondeu. Verifica a ligação e tenta outra vez."); }
 };
@@ -1034,7 +1069,7 @@ async function planRoute(dest) {
   R.dest = dest;
   $("route").hidden = false; $("route").classList.remove("nav"); $("navLine").hidden = true;
   $("rTime").textContent = "A calcular…"; $("rMeta").textContent = ""; $("rDest").textContent = dest.title;
-  $("rFuel").hidden = !dest.fuel; if (dest.fuel) fillPrices($("rFuel"), dest); $("rAlerts").innerHTML = ""; $("rOpts").innerHTML = "";
+  $("rFuel").hidden = !dest.fuel; if (dest.fuel) fillPrices($("rFuel"), dest, dest.fuel); $("rAlerts").innerHTML = ""; $("rOpts").innerHTML = "";
   try {
     R.options = await fetchRoutes(from, dest);
     tagOptions();
