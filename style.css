@@ -525,3 +525,16 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .holdring circle.p{fill:none;stroke:var(--heat,#ff8a3d);stroke-linecap:round;stroke-dasharray:170;stroke-dashoffset:170}
 .holdring.go circle.p{transition:stroke-dashoffset 3.75s linear;stroke-dashoffset:0}
 .maplibregl-canvas-container{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+
+/* v27: home, work and recent searches */
+.qbtn.fav span{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;text-align:left}
+.qbtn.fav small{font-weight:500;font-size:11px;color:var(--mute);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qbtn.fav svg{stroke:#5ad8ff}
+.qbtn.fav.set svg{stroke:#2fe07a}
+.recent{display:flex;flex-direction:column;gap:6px}
+.recent h4{display:flex;justify-content:space-between;align-items:center;margin:8px 2px 2px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.recent .linkbtn{background:none;border:0;color:#5ad8ff;font:600 12px var(--ios);text-transform:none;letter-spacing:0;cursor:pointer}
+.recrow{display:flex;align-items:center;border-bottom:.5px solid var(--hair)}
+.recrow:last-child{border-bottom:0}
+.recrow button:first-child{flex:1;border-bottom:0!important}
+.recrow .edit{flex:none;width:auto;padding:8px 14px;color:#5ad8ff;font-size:13px;font-weight:600}

@@ -1002,7 +1002,8 @@ function renderResults(list, msg) {
 $("sInput").addEventListener("input", () => {
   clearTimeout(searchT);
   const q = $("sInput").value.trim();
-  if (q.length < 3) { $("sResults").innerHTML = ""; return; }
+  if (q.length < 3) { $("sResults").innerHTML = ""; $("sRecent").hidden = !!q; return; }
+  $("sRecent").hidden = true;
   searchT = setTimeout(async () => {
     try { const list = await geocode(q); renderResults(list, list.length ? "" : "Não encontrei nada com esse nome."); }
     catch (e) { if (e.name !== "AbortError") renderResults([], "A pesquisa não respondeu. Verifica a ligação e tenta outra vez."); }
@@ -1012,8 +1013,59 @@ $("sForm").addEventListener("submit", e => { e.preventDefault(); $("sInput").dis
 $("sResults").addEventListener("click", e => {
   const b = e.target.closest("button[data-i]"); if (!b) return;
   const d = $("sResults")._list[+b.dataset.i];
+  if (favSetting) { saveFav(favSetting, d); return; }
   $("search").hidden = true;
+  addRecent(d);
   planRoute(d);
+});
+
+// ---------------- home, work and recent searches ----------------
+const FAVS = { home: "Casa", work: "Trabalho" };
+let favSetting = null;
+const favs = () => store.get("favs", {}), recents = () => store.get("recents", []);
+const placeOf = d => ({ title: d.title, sub: d.sub || "", lat: d.lat, lng: d.lng, ...(d.fuel ? { fuel: d.fuel } : {}) });
+function addRecent(d) {
+  const r = recents().filter(x => distM(x, d) > 30 || x.title !== d.title);
+  r.unshift(placeOf(d)); store.set("recents", r.slice(0, 8)); renderRecent();
+}
+function saveFav(kind, d) {
+  const f = favs(); f[kind] = placeOf(d); store.set("favs", f);
+  favSetting = null; $("sInput").value = ""; $("sInput").placeholder = "Morada, local ou cidade"; $("sResults").innerHTML = "";
+  toast(`${FAVS[kind]} guardada: ${d.title}`); renderFavs(); renderRecent();
+}
+function askFav(kind) {
+  favSetting = kind; $("sInput").value = ""; $("sResults").innerHTML = ""; $("sRecent").hidden = true;
+  $("sInput").placeholder = `Pesquisa a morada de ${FAVS[kind].toLowerCase()}`; $("sInput").focus();
+}
+function renderFavs() {
+  const f = favs();
+  for (const k of Object.keys(FAVS)) {
+    const b = $(k === "home" ? "favHome" : "favWork");
+    b.querySelector("small").textContent = f[k] ? f[k].title : "Definir";
+    b.classList.toggle("set", !!f[k]);
+  }
+}
+function renderRecent() {
+  const f = favs(), r = recents(), el = $("sRecent");
+  const rows = [];
+  for (const k of Object.keys(FAVS)) if (f[k]) rows.push(`<div class="recrow"><button data-fav="${k}"><b>${FAVS[k]}</b><span>${esc(f[k].title)}${f[k].sub ? " · " + esc(f[k].sub) : ""}</span></button><button class="edit" data-edit="${k}">Alterar</button></div>`);
+  el.innerHTML = (rows.length ? `<h4>Favoritos</h4><div class="results">${rows.join("")}</div>` : "") +
+    (r.length ? `<h4>Recentes <button class="linkbtn" id="recClear">Limpar</button></h4><div class="results">${r.map((x, i) => `<button data-rec="${i}"><b>${esc(x.title)}</b><span>${esc(x.sub || "")}${S.me ? (x.sub ? " · " : "") + fmtDist(distM(S.me, x)) : ""}</span></button>`).join("")}</div>` : "");
+  el.hidden = !el.innerHTML || !!$("sInput").value.trim();
+}
+function goFav(kind) {
+  const p = favs()[kind]; if (!p) { askFav(kind); return; }
+  $("search").hidden = true; planRoute(p);
+}
+$("favHome").onclick = () => goFav("home");
+$("favWork").onclick = () => goFav("work");
+$("sRecent").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "recClear") { store.set("recents", []); renderRecent(); return; }
+  if (b.dataset.edit) { askFav(b.dataset.edit); return; }
+  if (b.dataset.fav) { goFav(b.dataset.fav); return; }
+  const p = recents()[+b.dataset.rec]; if (!p) return;
+  $("search").hidden = true; addRecent(p); planRoute(p);
 });
 // fuel stations within 100 km, nearest first
 async function fuelNearby(ref) {
@@ -1051,7 +1103,12 @@ $("fuelBtn").onclick = async () => {
     renderResults(list, list.length ? "" : "Não encontrei bombas de gasolina num raio de 100 km.");
   } catch { renderResults([], "A pesquisa não respondeu. Verifica a ligação e tenta outra vez."); }
 };
-$("searchBtn").onclick = () => { $("search").hidden = false; setTimeout(() => $("sInput").focus(), 50); };
+$("searchBtn").onclick = () => {
+  favSetting = null; $("sInput").placeholder = "Morada, local ou cidade"; $("sInput").value = ""; $("sResults").innerHTML = "";
+  $("search").hidden = false; renderFavs(); renderRecent();
+  // don't pop the keyboard over the shortcuts when there's something to pick from
+  if ($("sRecent").hidden) setTimeout(() => $("sInput").focus(), 50);
+};
 
 // Every router is normalised to {distance, duration, noTraffic, delay, geometry, steps, jams}
 const TT = CFG.tomtomKey ? "tomtom" : "osrm";
