@@ -1013,7 +1013,6 @@ $("sForm").addEventListener("submit", e => { e.preventDefault(); $("sInput").dis
 $("sResults").addEventListener("click", e => {
   const b = e.target.closest("button[data-i]"); if (!b) return;
   const d = $("sResults")._list[+b.dataset.i];
-  if (favSetting) { saveFav(favSetting, d); return; }
   $("search").hidden = true;
   addRecent(d);
   planRoute(d);
@@ -1030,13 +1029,42 @@ function addRecent(d) {
 }
 function saveFav(kind, d) {
   const f = favs(); f[kind] = placeOf(d); store.set("favs", f);
-  favSetting = null; $("sInput").value = ""; $("sInput").placeholder = "Morada, local ou cidade"; $("sResults").innerHTML = "";
-  toast(`${FAVS[kind]} guardada: ${d.title}`); renderFavs(); renderRecent();
+  toast(`${FAVS[kind]} ${kind === "home" ? "guardada" : "guardado"}: ${d.title}`); renderFavs(); renderRecent();
 }
+// a small window to search and pick the address for home or work
+let favT = null;
 function askFav(kind) {
-  favSetting = kind; $("sInput").value = ""; $("sResults").innerHTML = ""; $("sRecent").hidden = true;
-  $("sInput").placeholder = `Pesquisa a morada de ${FAVS[kind].toLowerCase()}`; $("sInput").focus();
+  favSetting = kind;
+  $("favTitle").innerHTML = `Definir <b>${FAVS[kind].toLowerCase()}</b>`;
+  $("favInput").value = ""; $("favResults").innerHTML = "";
+  const cur = favs()[kind];
+  $("favNow").textContent = cur ? `Agora: ${cur.title}${cur.sub ? ", " + cur.sub : ""}` : "Pesquisa a morada e toca no resultado certo.";
+  $("favDlg").hidden = false; setTimeout(() => $("favInput").focus(), 50);
 }
+function closeFav() { $("favDlg").hidden = true; favSetting = null; }
+function renderFavResults(list, msg) {
+  const el = $("favResults");
+  el.innerHTML = msg ? `<div class="empty">${esc(msg)}</div>` : list.map((r, i) => `<button data-i="${i}"><b>${esc(r.title)}</b><span>${esc(r.sub)}</span></button>`).join("");
+  el._list = list;
+}
+$("favInput").addEventListener("input", () => {
+  clearTimeout(favT); const q = $("favInput").value.trim();
+  if (q.length < 3) { $("favResults").innerHTML = ""; return; }
+  favT = setTimeout(async () => {
+    try { const l = await geocode(q); renderFavResults(l, l.length ? "" : "Não encontrei essa morada."); }
+    catch (e) { if (e.name !== "AbortError") renderFavResults([], "A pesquisa não respondeu. Tenta outra vez."); }
+  }, 450);
+});
+$("favForm").addEventListener("submit", e => { e.preventDefault(); $("favInput").dispatchEvent(new Event("input")); });
+$("favResults").addEventListener("click", e => {
+  const b = e.target.closest("button[data-i]"); if (!b || !favSetting) return;
+  const kind = favSetting; saveFav(kind, $("favResults")._list[+b.dataset.i]); closeFav();
+});
+$("favHere").onclick = () => {
+  if (!S.me || !favSetting) { toast("Ainda sem localização"); return; }
+  const kind = favSetting; saveFav(kind, { title: "A minha localização", sub: "Guardada a " + new Date().toLocaleDateString("pt-PT"), lat: S.me.lat, lng: S.me.lng }); closeFav();
+};
+$("favClose").onclick = closeFav;
 function renderFavs() {
   const f = favs();
   for (const k of Object.keys(FAVS)) {
@@ -1104,7 +1132,7 @@ $("fuelBtn").onclick = async () => {
   } catch { renderResults([], "A pesquisa não respondeu. Verifica a ligação e tenta outra vez."); }
 };
 $("searchBtn").onclick = () => {
-  favSetting = null; $("sInput").placeholder = "Morada, local ou cidade"; $("sInput").value = ""; $("sResults").innerHTML = "";
+  $("sInput").value = ""; $("sResults").innerHTML = "";
   $("search").hidden = false; renderFavs(); renderRecent();
   // don't pop the keyboard over the shortcuts when there's something to pick from
   if ($("sRecent").hidden) setTimeout(() => $("sInput").focus(), 50);

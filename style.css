@@ -538,3 +538,9 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .recrow:last-child{border-bottom:0}
 .recrow button:first-child{flex:1;border-bottom:0!important}
 .recrow .edit{flex:none;width:auto;padding:8px 14px;color:#5ad8ff;font-size:13px;font-weight:600}
+
+/* v28: home/work address window */
+.favdlg{gap:14px!important}
+.favdlg h2{font-size:28px!important}
+#favResults:empty{display:none}
+#favDlg{z-index:12}

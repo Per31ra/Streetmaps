@@ -145,6 +145,19 @@
     </div>
   </div>
 
+  <div class="drawer center" id="favDlg" hidden>
+    <div class="sheet narrow favdlg" role="dialog" aria-modal="true" aria-labelledby="favTitle">
+      <div class="sheethead"><h2 id="favTitle">Definir <b>casa</b></h2><button class="btn" id="favClose">Fechar</button></div>
+      <form id="favForm" class="searchform" role="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="favInput" type="search" placeholder="Escreve a morada" autocomplete="off" enterkeyhint="search" aria-label="Morada">
+      </form>
+      <button type="button" class="qbtn" id="favHere"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 3 10.5l7.5 3L14 21l7-18z"/></svg>Usar a minha localização atual</button>
+      <div id="favResults" class="results"></div>
+      <p class="hint" id="favNow"></p>
+    </div>
+  </div>
+
   <!-- events -->
   <div class="drawer" id="events" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="eTitle">
