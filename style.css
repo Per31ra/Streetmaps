@@ -494,3 +494,13 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .ptscard p{margin:0;font-size:13px;color:var(--mute);line-height:1.5}
 .ptssec .hint{margin-top:8px}
 .person .ppts{color:#ffd23d!important;font-weight:600}
+
+/* v23: smaller speedometer on phones, compass on the left above it with a gap */
+@media (max-width:760px){
+  .speedo{width:128px;height:128px}
+  .speedo .val b{font-size:42px}
+  .speedo .val span{font-size:10px}
+  .speedo .val em{font-size:9px;padding:0 6px}
+  .tools{left:156px}
+}
+.northbtn{left:0;transform:none;top:-54px}
