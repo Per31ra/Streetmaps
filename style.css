@@ -504,3 +504,16 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
   .tools{left:156px}
 }
 .northbtn{left:0;transform:none;top:-54px}
+
+/* v24: fuel prices */
+.fuelp{display:flex;flex-direction:column;gap:4px;margin:6px 0;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border:.5px solid var(--hair);font-size:14px}
+.fuelp>div{display:flex;justify-content:space-between;gap:12px}
+.fuelp>div span{color:var(--mute)}
+.fuelp>div b{font-variant-numeric:tabular-nums}
+.fuelp small{color:var(--mute);font-size:11px;margin-top:2px}
+.fuelp.none{color:var(--mute);font-size:13px}
+.fuelp .tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;margin-bottom:4px}
+.fuelp .tags i{font-style:normal;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.07);color:var(--mute)}
+.fuelp .tags i.ok{background:rgba(47,224,122,.14);color:#2fe07a}
+.route.nav #rFuel{display:none}
+.route{z-index:7}

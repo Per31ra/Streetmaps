@@ -257,7 +257,8 @@ map.on("dragstart", () => { S.follow = false; });
 map.on("click", "fuel-dot", e => {
   const f = e.features?.[0]; if (!f) return;
   e.originalEvent.stopPropagation(); fuelClick = true;
-  showPlaceCard(f.properties.name || "Bomba de gasolina", "Combustível", { lat: e.lngLat.lat, lng: e.lngLat.lng });
+  const c = f.geometry?.coordinates || [e.lngLat.lng, e.lngLat.lat];
+  showPlaceCard(f.properties.name || "Bomba de gasolina", "Combustível", { lat: c[1], lng: c[0] }, true);
 });
 map.on("mouseenter", "fuel-dot", () => map.getCanvas().style.cursor = "pointer");
 map.on("mouseleave", "fuel-dot", () => map.getCanvas().style.cursor = "");
@@ -828,12 +829,46 @@ const trackMarkers = TRACKS.map(t => {
   el.addEventListener("click", e => { e.stopPropagation(); showPlaceCard(t.name, t.kind, t); });
   return new maplibregl.Marker({ element: el }).setLngLat([t.lng, t.lat]).addTo(map);
 });
-function showPlaceCard(title, sub, at) {
+// ---------------- fuel prices (DGEG, refreshed 3x a day by a GitHub Action into the "dados" branch) ----------------
+const PRICES_URL = CFG.pricesUrl || "https://raw.githubusercontent.com/Per31ra/Streetmaps/dados/precos.json";
+const FUEL_LABELS = [["gasoleo", "Gasóleo"], ["gasoleo_aditivado", "Gasóleo aditivado"], ["gasolina95", "Gasolina 95"],
+  ["gasolina95_aditivada", "Gasolina 95 aditivada"], ["gasolina98", "Gasolina 98"], ["gasolina98_aditivada", "Gasolina 98 aditivada"], ["gpl", "GPL"]];
+let pricesP = null;
+function loadPrices() {
+  if (!pricesP) pricesP = fetch(PRICES_URL).then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(j => { if (!j) pricesP = null; return j; });
+  return pricesP;
+}
+// the DGEG station closest to a point, if one is within 150 m
+async function pricesNear(at) {
+  const j = await loadPrices(); if (!j) return null;
+  let best = null, bd = 150;
+  for (const st of j.stations) {
+    if (Math.abs(st.lat - at.lat) > 0.003 || Math.abs(st.lng - at.lng) > 0.004) continue;
+    const d = distM(at, st); if (d < bd) { bd = d; best = st; }
+  }
+  return best && { ...best, updated: j.updated };
+}
+const eur = v => v.toFixed(3).replace(".", ",") + " €";
+function pricesHtml(st) {
+  if (!st) return `<div class="fuelp none">Sem preços para esta bomba.</div>`;
+  const rows = FUEL_LABELS.filter(([k]) => st.p[k] != null).map(([k, l]) => `<div><span>${l}</span><b>${eur(st.p[k])}</b></div>`).join("");
+  const has98 = st.p.gasolina98 != null || st.p.gasolina98_aditivada != null, hasAd = st.p.gasoleo_aditivado != null;
+  const when = st.u ? new Date(st.u.replace(" ", "T")).toLocaleDateString("pt-PT", { day: "numeric", month: "short" }) : "";
+  return `<div class="fuelp"><div class="tags"><i class="${has98 ? "ok" : ""}">${has98 ? "Tem 98" : "Sem 98"}</i><i class="${hasAd ? "ok" : ""}">${hasAd ? "Tem gasóleo aditivado" : "Sem gasóleo aditivado"}</i></div>
+    ${rows}<small>Preços da DGEG${when ? ", atualizados pela bomba a " + when : ""}</small></div>`;
+}
+async function fillPrices(el, at) {
+  el.innerHTML = `<div class="fuelp none">A carregar preços…</div>`;
+  const st = await pricesNear(at); if (el.isConnected) el.innerHTML = pricesHtml(st);
+}
+function showPlaceCard(title, sub, at, fuel) {
   const card = $("card"); card.className = "card"; card.hidden = false;
   card.innerHTML = `<button class="x" aria-label="Fechar">×</button><div><div class="crew">${esc(sub)}</div><h3>${esc(title)}</h3></div>
-    <div class="hint">A ${fmtDist(distM(S.me || LISBOA, at))} de ti</div><div class="formrow"><button class="btn hot small" id="cardGo">Ir para aqui</button></div>`;
+    <div class="hint">A ${fmtDist(distM(S.me || LISBOA, at))} de ti</div>${fuel ? '<div id="cardFuel"></div>' : ""}<div class="formrow"><button class="btn hot small" id="cardGo">Ir para aqui</button></div>`;
   card.querySelector(".x").onclick = () => card.hidden = true;
-  $("cardGo").onclick = () => { card.hidden = true; planRoute({ title, lat: at.lat, lng: at.lng }); };
+  if (fuel) fillPrices($("cardFuel"), at);
+  $("cardGo").onclick = () => { card.hidden = true; planRoute({ title, lat: at.lat, lng: at.lng, fuel }); };
 }
 function popularMeets() {
   const now = Date.now();
@@ -930,6 +965,11 @@ $("fuelBtn").onclick = async () => {
   $("sInput").value = ""; renderResults([], "A procurar bombas de gasolina perto de ti…");
   try {
     const list = (await fuelNearby(ref)).filter(r => distM(ref, r) <= 100000).sort((a, b) => distM(ref, a) - distM(ref, b));
+    list.forEach(r => r.fuel = true);
+    // add diesel and 95 prices to each line when the DGEG data has the station
+    await Promise.all(list.map(async r => { const st = await pricesNear(r); if (!st) return;
+      const bits = [st.p.gasoleo != null && "Gasóleo " + eur(st.p.gasoleo), st.p.gasolina95 != null && "95 " + eur(st.p.gasolina95), (st.p.gasolina98 ?? st.p.gasolina98_aditivada) != null && "98 " + eur(st.p.gasolina98 ?? st.p.gasolina98_aditivada)].filter(Boolean);
+      if (bits.length) r.sub = bits.join(" · ") + (r.sub ? " · " + r.sub : ""); }));
     renderResults(list, list.length ? "" : "Não encontrei bombas de gasolina num raio de 100 km.");
   } catch { renderResults([], "A pesquisa não respondeu. Verifica a ligação e tenta outra vez."); }
 };
@@ -993,7 +1033,8 @@ async function planRoute(dest) {
   const from = S.me || { lat: map.getCenter().lat, lng: map.getCenter().lng };
   R.dest = dest;
   $("route").hidden = false; $("route").classList.remove("nav"); $("navLine").hidden = true;
-  $("rTime").textContent = "A calcular…"; $("rMeta").textContent = ""; $("rDest").textContent = dest.title; $("rAlerts").innerHTML = ""; $("rOpts").innerHTML = "";
+  $("rTime").textContent = "A calcular…"; $("rMeta").textContent = ""; $("rDest").textContent = dest.title;
+  $("rFuel").hidden = !dest.fuel; if (dest.fuel) fillPrices($("rFuel"), dest); $("rAlerts").innerHTML = ""; $("rOpts").innerHTML = "";
   try {
     R.options = await fetchRoutes(from, dest);
     tagOptions();
