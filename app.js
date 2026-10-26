@@ -254,6 +254,16 @@ map.on("error", e => {
 });
 map.on("style.load", neonify);
 map.on("dragstart", () => { S.follow = false; });
+// a finger or mouse on the map, or a pinch/scroll zoom in progress, pauses the follow camera
+let pointersDown = 0, userGesture = false;
+{
+  const c = map.getCanvasContainer();
+  c.addEventListener("pointerdown", () => { pointersDown++; }, true);
+  for (const ev of ["pointerup", "pointercancel"]) window.addEventListener(ev, () => { pointersDown = Math.max(0, pointersDown - 1); }, true);
+  window.addEventListener("blur", () => { pointersDown = 0; });
+  map.on("movestart", e => { if (e.originalEvent) userGesture = true; });
+  map.on("moveend", e => { if (e.originalEvent || userGesture) userGesture = false; });
+}
 map.on("click", "fuel-dot", e => {
   const f = e.features?.[0]; if (!f) return;
   e.originalEvent.stopPropagation(); fuelClick = true;
@@ -471,7 +481,8 @@ function glideFrame(now) {
     me2.head = angLerp(glide.h0, glide.h1, t);
     meMarker.setLngLat([me2.pos.lng, me2.pos.lat]); setHeading(meEl, me2.head);
   }
-  if (!S.follow || map.isEasing() || !me2.pos) return;
+  // never move the camera while a finger or the mouse is on the map: jumpTo would cancel the drag
+  if (!S.follow || map.isEasing() || !me2.pos || userGesture || pointersDown) return;
   const b = map.getBearing(), target = camTarget == null ? b : camTarget;
   const turn = ((target - b + 540) % 360) - 180, c = map.getCenter();
   if (!moving && Math.abs(turn) < 0.1 && Math.abs(c.lat - me2.pos.lat) < 1e-7 && Math.abs(c.lng - me2.pos.lng) < 1e-7) return;
