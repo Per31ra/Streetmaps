@@ -476,6 +476,60 @@ function glideFrame(now) {
   map.jumpTo({ center: [me2.pos.lng, me2.pos.lat], bearing: Math.abs(turn) < 0.1 ? target : angLerp(b, target, 0.08) });
 }
 requestAnimationFrame(glideFrame);
+// ---------------- points ----------------
+// 1 point per km driven while following a route in the app, 50 per event you actually go to
+// (being within 300 m of it between 30 min before and 4 h after it starts)
+const PTS = { perKm: 1, event: 50 };
+const LEVELS = [[0, "Novato"], [100, "Piloto de rua"], [500, "Rei da estrada"], [1500, "Veterano"], [5000, "Lenda"]];
+const pts = () => store.get("points", { km: 0, events: [] });
+const pointsTotal = (p = pts()) => Math.floor(p.km) * PTS.perKm + p.events.length * PTS.event;
+function level(total) {
+  let i = 0; while (i + 1 < LEVELS.length && total >= LEVELS[i + 1][0]) i++;
+  return { name: LEVELS[i][1], from: LEVELS[i][0], to: LEVELS[i + 1]?.[0] ?? null };
+}
+const odo = { last: null, km: 0 };
+function trackRouteKm(p) {
+  if (!R.nav) { odo.last = null; return; }
+  const fix = { lat: p.coords.latitude, lng: p.coords.longitude, t: p.timestamp };
+  if (!(p.coords.accuracy <= 30)) return;
+  if (odo.last) {
+    const d = distM(odo.last, fix), dt = (fix.t - odo.last.t) / 1000;
+    // ignore GPS jumps: too far in one go or faster than a car plausibly goes
+    if (d > 2 && d < 500 && dt > 0 && d / dt * 3.6 < 250) {
+      odo.km += d / 1000; const P = pts(); P.km += d / 1000; store.set("points", P);
+    }
+  }
+  odo.last = fix;
+}
+let lastCheckin = 0;
+function checkInEvents() {
+  const now = Date.now(); if (!S.me || now - lastCheckin < 20000) return; lastCheckin = now;
+  const P = pts();
+  for (const ev of S.events || []) {
+    if (P.events.includes(ev.id) || ev.lat == null) continue;
+    const t = new Date(ev.starts_at).getTime();
+    if (now < t - 30 * 60e3 || now > t + 4 * 3600e3 || distM(S.me, ev) > 300) continue;
+    P.events.push(ev.id); store.set("points", P);
+    toast(`+${PTS.event} pontos: estás no ${ev.title}`);
+  }
+}
+function renderPoints() {
+  const P = pts(), total = pointsTotal(P), lv = level(total);
+  $("ptsVal").textContent = total.toLocaleString("pt-PT");
+  $("ptsLevel").textContent = lv.name;
+  $("ptsBar").style.width = (lv.to ? Math.min(100, (total - lv.from) / (lv.to - lv.from) * 100) : 100) + "%";
+  $("ptsNext").textContent = lv.to ? `Faltam ${(lv.to - total).toLocaleString("pt-PT")} para ${level(lv.to).name}` : "Nível máximo";
+  $("ptsKm").textContent = P.km.toLocaleString("pt-PT", { maximumFractionDigits: 1 }) + " km em rotas";
+  $("ptsEv").textContent = P.events.length + (P.events.length === 1 ? " evento" : " eventos");
+}
+// in live mode the total goes on your public profile, so the community can see it
+let ptsSynced = null;
+setInterval(async () => {
+  const total = pointsTotal();
+  if (B.mode === "demo" || !S.profile?.nick || total === ptsSynced) return;
+  const { id, ...rest } = S.profile;
+  try { await B.saveProfile({ ...rest, points: total }); ptsSynced = total; S.profile.points = total; } catch (e) { console.warn("pontos", e); }
+}, 60000);
 function gpsMsg(t) { const b = $("gpsBadge"); b.textContent = t; b.hidden = !t; }
 function onFix(p) {
   gpsMsg("");
@@ -490,7 +544,7 @@ function onFix(p) {
   lastFix = fix;
   S.me = { lat: fix.lat, lng: fix.lng };
   S.speedKmh = Math.max(0, (speed || 0) * 3.6);
-  trackTop(p);
+  trackTop(p); trackRouteKm(p); checkInEvents();
   if (head != null && !isNaN(head) && S.speedKmh > 3) S.heading = head;
   if (first) { me2.pos = fix; me2.head = S.heading || 0; meMarker.setLngLat([fix.lng, fix.lat]).addTo(map); setHeading(meEl, me2.head); map.jumpTo({ center: [fix.lng, fix.lat], zoom: 15.5 }); }
   else glideTo(fix, gap);
@@ -566,8 +620,24 @@ function showDriverCard(id) {
 // ---------------- speedometer ----------------
 const sctx = $("speedo").getContext("2d"); let shown = 0;
 const DIRS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
-function drawSpeedo() {
-  shown += (S.speedKmh - shown) * 0.15;
+// redrawn ~12 times a second and only when the value moves; the number changes at most
+// 3 times a second, and GPS jitter below 3 km/h reads as 0, so the dial doesn't flicker
+let spdLastDraw = 0, spdDrawn = -1, spdTextAt = 0;
+function drawSpeedo(now = 0) {
+  requestAnimationFrame(drawSpeedo);
+  if (now - spdLastDraw < 80) return;
+  spdLastDraw = now;
+  const target = S.speedKmh < 3 ? 0 : S.speedKmh;
+  shown += (target - shown) * 0.25;
+  if (Math.abs(target - shown) < 0.3) shown = target;
+  if (now - spdTextAt > 330) {
+    spdTextAt = now; const v = Math.round(shown);
+    if ($("spd").textContent !== String(v)) $("spd").textContent = v;
+    const h = S.heading, ht = h == null ? "—" : DIRS[Math.round(h / 45) % 8] + " " + Math.round(h) + "°";
+    if ($("hdg").textContent !== ht) $("hdg").textContent = ht;
+  }
+  if (Math.abs(shown - spdDrawn) < 0.25) return;
+  spdDrawn = shown;
   const c = sctx, Z = 340, cx = Z / 2, cy = Z / 2, max = 200, SEG = 36;
   const a0 = Math.PI * .72, a1 = Math.PI * 2.28, lit = Math.min(shown, max) / max * SEG;
   c.clearRect(0, 0, Z, Z);
@@ -587,10 +657,6 @@ function drawSpeedo() {
   // scale numbers
   c.fillStyle = "rgba(233,238,248,.8)"; c.font = "italic 800 22px 'Saira Condensed',sans-serif"; c.textAlign = "center"; c.textBaseline = "middle";
   for (let k = 0; k <= max; k += 40) { const a = a0 + (a1 - a0) * k / max; c.fillText(k, cx + Math.cos(a) * 104, cy + Math.sin(a) * 104); }
-  $("spd").textContent = Math.round(shown);
-  const h = S.heading;
-  $("hdg").textContent = h == null ? "—" : DIRS[Math.round(h / 45) % 8] + " " + Math.round(h) + "°";
-  requestAnimationFrame(drawSpeedo);
 }
 requestAnimationFrame(drawSpeedo);
 
@@ -736,7 +802,7 @@ async function loadProfiles() {
 function renderPeople() {
   const el = $("people");
   if (!S.profiles.length) { el.innerHTML = `<div class="empty">Ainda ninguém criou perfil. Sê o primeiro.</div>`; return; }
-  el.innerHTML = S.profiles.map(p => `<div class="person${p.id === S.uid ? " me" : ""}"><b>${esc(p.nick)}</b><span>${esc(p.car || "Carro por definir")}${p.hp ? " · " + esc(p.hp) + " cv" : ""}</span><span>${esc(p.crew || "Sem crew")}</span>${badgesHtml(p.badges)}</div>`).join("");
+  el.innerHTML = S.profiles.map(p => `<div class="person${p.id === S.uid ? " me" : ""}"><b>${esc(p.nick)}</b><span>${esc(p.car || "Carro por definir")}${p.hp ? " · " + esc(p.hp) + " cv" : ""}</span>${(p.id === S.uid ? pointsTotal() : p.points) ? `<span class="ppts">${(p.id === S.uid ? pointsTotal() : p.points).toLocaleString("pt-PT")} pts · ${level(p.id === S.uid ? pointsTotal() : p.points).name}</span>` : ""}<span>${esc(p.crew || "Sem crew")}</span>${badgesHtml(p.badges)}</div>`).join("");
 }
 $("pForm").addEventListener("submit", async e => {
   e.preventDefault(); const msg = $("pMsg");
@@ -1058,6 +1124,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 function startNav() {
   if (!R.route) return;
   if (!S.me) { toast("Ativa a localização para seguires a rota"); return; }
+  odo.km = 0; odo.last = null;
   R.nav = true; S.follow = true; drawRoutes(); document.body.classList.add("navigating"); keepAwake(true);
   $("route").classList.add("nav"); $("navLine").hidden = false;
   chaseCam(800);
@@ -1065,6 +1132,8 @@ function startNav() {
 }
 function endNav() {
   document.body.classList.remove("navigating"); keepAwake(false);
+  if (odo.km >= 1) { const n = Math.floor(odo.km) * PTS.perKm; toast(`+${n} ${n === 1 ? "ponto" : "pontos"} pelos ${odo.km.toFixed(1).replace(".", ",")} km da rota`); }
+  odo.km = 0; odo.last = null;
   map.easeTo({ padding: { top: 0, bottom: 0, left: 0, right: 0 }, pitch: 50, duration: 600 });
   R.nav = false; R.route = null; R.steps = []; R.options = []; $("route").hidden = true;
   const empty = { type: "FeatureCollection", features: [] };
@@ -1128,7 +1197,7 @@ document.querySelectorAll("[data-theme-pick]").forEach(b => b.onclick = () => { 
 document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => $(b.dataset.close).hidden = true);
 ["events", "profile", "search"].forEach(id => $(id).addEventListener("click", e => { if (e.target.id === id) $(id).hidden = true; }));
 $("openEvents").onclick = () => { $("events").hidden = false; loadEvents(); };
-$("openProfile").onclick = () => { $("profile").hidden = false; fillProfile(); renderTop(); loadProfiles(); };
+$("openProfile").onclick = () => { $("profile").hidden = false; fillProfile(); renderTop(); renderPoints(); loadProfiles(); };
 $("topReset").onclick = () => { if (confirm("Apagar o teu recorde de velocidade?")) { store.set("topSpeed", null); renderTop(); } };
 $("recenter").onclick = () => { S.follow = true; if (R.nav) { chaseCam(600); return; } if (S.me) map.easeTo({ center: [S.me.lng, S.me.lat], zoom: Math.max(map.getZoom(), 15), pitch: 50, bearing: followBearing() }); else toast("Ainda sem localização"); };
 document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => {

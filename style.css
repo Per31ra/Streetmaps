@@ -484,3 +484,13 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .c-londres,.c-london{font-family:"Bebas Neue",sans-serif!important;letter-spacing:.1em!important;color:#fff!important;text-shadow:3px 3px 0 #d0021b!important}
 .c-roma,.c-rome{font-family:"Cinzel",serif!important;font-weight:900!important;color:#f2c14e!important;text-shadow:2px 2px 0 #7a1414!important}
 .c-aveiro,.c-faro,.c-barcelona{text-shadow:none!important}
+
+/* v22: points */
+.ptscard{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:16px;background:linear-gradient(120deg,rgba(47,134,255,.18),rgba(47,224,122,.08));border:.5px solid var(--hair)}
+.ptshead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ptslevel{font-family:var(--f-display);font-style:italic;font-weight:800;font-size:16px;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.08);color:#ffd23d}
+.ptsbar{height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.ptsbar i{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#2f86ff,#2fe07a,#ffd23d);transition:width .5s}
+.ptscard p{margin:0;font-size:13px;color:var(--mute);line-height:1.5}
+.ptssec .hint{margin-top:8px}
+.person .ppts{color:#ffd23d!important;font-weight:600}

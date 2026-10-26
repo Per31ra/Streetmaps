@@ -179,6 +179,14 @@
         <div class="field"><label for="pMods">Modificações</label><input id="pMods" maxlength="200" placeholder="Separadas por vírgulas: coilovers, escape, jantes 17&quot;"></div>
         <div class="formrow"><button type="submit" class="btn hot" id="pSave">Guardar perfil</button><span class="hint" id="pMsg"></span></div>
       </form>
+      <section class="ptssec"><h3>Pontos</h3>
+        <div class="ptscard">
+          <div class="ptshead"><div class="topnum"><b id="ptsVal">0</b><span>pts</span></div><span class="ptslevel" id="ptsLevel">Novato</span></div>
+          <div class="ptsbar"><i id="ptsBar"></i></div>
+          <p><span id="ptsNext"></span><br><span id="ptsKm"></span> · <span id="ptsEv"></span></p>
+        </div>
+        <p class="hint">Ganhas 1 ponto por cada km feito com uma rota da app e 50 pontos por cada evento onde estejas presente (a app confirma pelo GPS quando estás no local).</p>
+      </section>
       <section class="topsec"><h3>Velocidade máxima</h3>
         <div class="topcard"><div class="topnum"><b id="topVal">—</b><span>km/h</span></div><p id="topMeta"></p><button type="button" class="btn" id="topReset" hidden>Repor</button></div>
         <p class="hint">Fica guardada só neste telemóvel e não é mostrada a mais ninguém. É medida pelo GPS, por isso pode ter alguns km/h de diferença do conta-quilómetros.</p>

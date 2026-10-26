@@ -16,6 +16,7 @@ O mapa ao vivo da comunidade tuning: mapa real do mundo inteiro com visual néon
 - No mapa: pistas de corrida (riscadas a vermelho e branco) e bombas de gasolina ao aproximar.
 - Barra de música no topo: liga o Spotify para ver o que está a tocar e mudar de música, ou abre o Apple Music.
 - Botão **Satélite** para alternar entre o mapa e a vista de satélite.
+- Pontos: 1 por cada km feito com uma rota da app e 50 por cada evento onde estejas presente (confirmado pelo GPS), com níveis de Novato a Lenda. No modo ao vivo, os pontos aparecem no perfil público.
 - Câmara em 3.ª pessoa durante a rota, com prédios em 3D.
 - Dois temas, escolhidos no Perfil: **Street** (néon azul-noite) e **Vice** (pôr do sol, rosa e turquesa, inspirado em Miami; sem logótipos nem fontes de jogos).
 
