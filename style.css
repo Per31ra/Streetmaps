@@ -517,3 +517,11 @@ body.navigating .musicpanel{top:calc(var(--safe-top) + 178px);bottom:auto}
 .fuelp .tags i.ok{background:rgba(47,224,122,.14);color:#2fe07a}
 .route.nav #rFuel{display:none}
 .route{z-index:7}
+
+/* v26: hold 4 s on the map to suggest a route there */
+.holdring{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;z-index:3}
+.holdring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.holdring circle{fill:rgba(14,16,22,.35);stroke:rgba(255,255,255,.25);stroke-width:5}
+.holdring circle.p{fill:none;stroke:var(--heat,#ff8a3d);stroke-linecap:round;stroke-dasharray:170;stroke-dashoffset:170}
+.holdring.go circle.p{transition:stroke-dashoffset 3.75s linear;stroke-dashoffset:0}
+.maplibregl-canvas-container{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}

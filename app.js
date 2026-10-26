@@ -725,8 +725,51 @@ map.on("click", e => {
     $("events").hidden = false; return;
   }
   if (fuelClick) { fuelClick = false; return; }
+  if (holdSwallow) { holdSwallow = false; return; }
   $("card").hidden = true; $("menu").hidden = true;
 });
+
+// ---------------- hold 4 s on a road to get a route there ----------------
+const HOLD_MS = 4000;
+let hold = null, holdSwallow = false, holdPin = null;
+const holdRing = document.createElement("div"); holdRing.className = "holdring"; holdRing.hidden = true;
+holdRing.innerHTML = '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/><circle class="p" cx="32" cy="32" r="27"/></svg>';
+map.getContainer().appendChild(holdRing);
+function holdCancel() { if (!hold) return; clearTimeout(hold.timer); clearTimeout(hold.show); hold = null; holdRing.hidden = true; holdRing.classList.remove("go"); }
+function holdDone() {
+  const { x, y } = hold; holdCancel(); holdSwallow = true; setTimeout(() => holdSwallow = false, 800);
+  navigator.vibrate?.(40);
+  const ll = map.unproject([x, y]), at = { lat: ll.lat, lng: ll.lng };
+  // the name of the road under the finger, if any
+  let road = null;
+  try {
+    road = map.queryRenderedFeatures([[x - 14, y - 14], [x + 14, y + 14]])
+      .filter(f => f.sourceLayer === "transportation_name" || f.sourceLayer === "transportation")
+      .map(f => f.properties["name:pt"] || f.properties["name:latin"] || f.properties.name || f.properties.ref).find(Boolean) || null;
+  } catch {}
+  holdPin?.remove();
+  const el = document.createElement("div"); el.className = "ev-mk pick"; el.textContent = "◎";
+  holdPin = new maplibregl.Marker({ element: el }).setLngLat(ll).addTo(map);
+  showPlaceCard(road || "Ponto no mapa", road ? "Estrada" : "Escolhido no mapa", at, null, "Sugerir rota", () => { holdPin?.remove(); holdPin = null; });
+}
+const mc = map.getCanvasContainer();
+mc.addEventListener("pointerdown", e => {
+  if (!e.isPrimary || e.button > 0 || R.nav || S.pick) return;
+  const r = mc.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  holdCancel();
+  hold = { x, y, timer: setTimeout(holdDone, HOLD_MS) };
+  Object.assign(holdRing.style, { left: x + "px", top: y + "px" });
+  // the ring only appears after a short moment, so normal taps and drags don't flash it
+  hold.show = setTimeout(() => { if (hold) { holdRing.hidden = false; void holdRing.offsetWidth; holdRing.classList.add("go"); } }, 250);
+});
+mc.addEventListener("pointermove", e => {
+  if (!hold) return; const r = mc.getBoundingClientRect();
+  if (Math.hypot(e.clientX - r.left - hold.x, e.clientY - r.top - hold.y) > 12) holdCancel();
+});
+["pointerup", "pointercancel", "pointerleave"].forEach(ev => mc.addEventListener(ev, holdCancel));
+mc.addEventListener("touchstart", e => { if (e.touches.length > 1) holdCancel(); }, { passive: true });
+mc.addEventListener("contextmenu", e => e.preventDefault());
+map.on("movestart", e => { if (e.originalEvent) holdCancel(); });
 $("evForm").addEventListener("submit", async e => {
   e.preventDefault(); const msg = $("evMsg");
   const title = $("evName").value.trim(), when = $("evWhen").value;
@@ -893,13 +936,13 @@ map.on("click", "fuelp-dot", e => {
 });
 map.on("mouseenter", "fuelp-dot", () => map.getCanvas().style.cursor = "pointer");
 map.on("mouseleave", "fuelp-dot", () => map.getCanvas().style.cursor = "");
-function showPlaceCard(title, sub, at, fuel) {
+function showPlaceCard(title, sub, at, fuel, goLabel = "Ir para aqui", onClose) {
   const card = $("card"); card.className = "card"; card.hidden = false;
   card.innerHTML = `<button class="x" aria-label="Fechar">×</button><div><div class="crew">${esc(sub)}</div><h3>${esc(title)}</h3></div>
-    <div class="hint">A ${fmtDist(distM(S.me || LISBOA, at))} de ti</div>${fuel ? '<div id="cardFuel"></div>' : ""}<div class="formrow"><button class="btn hot small" id="cardGo">Ir para aqui</button></div>`;
-  card.querySelector(".x").onclick = () => card.hidden = true;
+    <div class="hint">A ${fmtDist(distM(S.me || LISBOA, at))} de ti</div>${fuel ? '<div id="cardFuel"></div>' : ""}<div class="formrow"><button class="btn hot small" id="cardGo">${esc(goLabel)}</button></div>`;
+  card.querySelector(".x").onclick = () => { card.hidden = true; onClose?.(); };
   if (fuel) fillPrices($("cardFuel"), { ...at, title }, fuel);
-  $("cardGo").onclick = () => { card.hidden = true; planRoute({ title, lat: at.lat, lng: at.lng, fuel }); };
+  $("cardGo").onclick = () => { card.hidden = true; onClose?.(); planRoute({ title, lat: at.lat, lng: at.lng, fuel }); };
 }
 function popularMeets() {
   const now = Date.now();
